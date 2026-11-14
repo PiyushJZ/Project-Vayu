@@ -5,6 +5,7 @@ import { createFsDrain } from "evlog/fs";
 import Fastify from "fastify";
 
 import { ENV } from "./env.server";
+import { briefRoutes } from "./routes/briefs";
 
 const baseCorsConfig = {
   origin: ENV.CORS_ORIGIN,
@@ -27,14 +28,16 @@ fastify.register(evlog, {
 });
 fastify.register(fastifyCors, baseCorsConfig);
 
+fastify.register(briefRoutes);
+
 fastify.get("/", async () => {
   return "OK";
 });
 
-fastify.listen({ port: 3000 }, (err) => {
+fastify.listen({ port: 8080 }, (err) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
   }
-  console.log("Server running on port 3000");
+  console.log("Server running on port 8080");
 });
