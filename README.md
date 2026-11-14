@@ -101,3 +101,33 @@ project-vayu/
 - `pnpm run check-types`: Check TypeScript types across all apps
 - `pnpm --filter server test`: Run the server tests
 - `pnpm run check`: Run Oxlint and Oxfmt
+
+## System Overview
+
+A pnpm workspace with two apps and one shared package. `apps/web` (Vite + React) calls `apps/server` (Fastify) over HTTP. The server owns all parsing, arithmetic and storage; the LLM only maps columns and writes text that code then validates. `packages/ui` supplies shared shadcn/ui components and global styles.
+
+## Subdirectories & System Boundaries
+
+- apps: [./apps/README.md](./apps/README.md) - Deployable applications.
+  - server: [./apps/server/README.md](./apps/server/README.md) - Fastify API on port 8080, brief pipeline, SQLite store.
+  - web: [./apps/web/README.md](./apps/web/README.md) - Front end on port 3000.
+- packages: [./packages/README.md](./packages/README.md) - Shared workspace packages.
+  - ui: [./packages/ui/README.md](./packages/ui/README.md) - `@project-vayu/ui` components, `cn` helper and `globals.css`.
+- `packages/config` has no source code and no contract file.
+
+## Global Invariants
+
+- Every number in a brief is computed by code in `apps/server/src/brief`; LLM text is accepted only after `write.ts:checkText`.
+- `apps/server/src/env.ts`, `apps/web/src/env.ts` and `apps/web/src/routeTree.gen.ts` are generated and gitignored; do not edit them by hand.
+- The web app reaches the server only through `ENV.VITE_SERVER_URL` in `apps/web/src/lib/api.ts`.
+
+## Global Side Effects
+
+- The server listens on port 8080 and the web dev server on port 3000.
+- The server reads and writes a local SQLite file at `DATABASE_URL` and calls the OpenRouter API using `OPENROUTER_API_KEY`.
+- Non-production runs write evlog files.
+
+## System Verification
+
+- Run: `pnpm --filter server test`
+- Run: `pnpm run check-types`
