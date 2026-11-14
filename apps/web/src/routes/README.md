@@ -6,8 +6,8 @@ TanStack Router file-based routes. `routeTree.gen.ts` in the parent directory is
 
 ## Interface
 
-- `__root.tsx`: `Route` (`createRootRouteWithContext<RouterAppContext>`) and `RouterAppContext` (empty interface). Sets the document title and description, the `/favicon.svg` link, and renders `Header`, `Outlet`, `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `storageKey="vite-ui-theme"`) and `TanStackRouterDevtools`. Imports `../index.css`.
-- `index.tsx`: `Route` for `/` (`createFileRoute("/")`) rendering `HomeComponent`, the Briefing Studio page. It collects a pasted table and an audience from `AUDIENCES`, loads samples with `api.samples()`, and on "Generate brief" calls `api.createBrief` then `api.writeBrief`. It renders `BriefView` and an error `role="alert"`.
+- `__root.tsx`: `Route` (`createRootRouteWithContext<RouterAppContext>`) and `RouterAppContext` (empty interface). Sets the document title and description, the `/vayu-logo.svg` icon link, and renders `Header`, `Outlet`, `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `storageKey="vite-ui-theme"`) and `TanStackRouterDevtools`. Imports `../index.css`.
+- `index.tsx`: `Route` for `/` (`createFileRoute("/")`) rendering `HomeComponent`, the Vayu page. It collects a pasted table and an audience from `AUDIENCES`, loads samples with `api.samples()`, and on "Generate brief" calls `api.createBrief` then `api.writeBrief`. It renders `BriefView` and an error `role="alert"`.
 
 ## Invariants
 

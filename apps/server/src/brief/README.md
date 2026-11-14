@@ -2,7 +2,7 @@
 
 ## Overview
 
-Domain core of the Civic Air Quality Briefing Studio server. It turns a pasted air quality table into a stored `Brief`. Code parses the table, maps columns (model first, header matching as fallback), computes every statistic, flags unreliable rows, picks a CPCB-based band and compares with the previous brief. A second, separate step asks an LLM (OpenRouter) only for wording, and rejects any text that does not pass code checks.
+Domain core of the Vayu server. It turns a pasted air quality table into a stored `Brief`. Code parses the table, maps columns (model first, header matching as fallback), computes every statistic, flags unreliable rows, picks a CPCB-based band and compares with the previous brief. A second, separate step asks an LLM (OpenRouter) only for wording, and rejects any text that does not pass code checks.
 
 Files: `types.ts` (shared types), `table.ts` (parsing), `mapping.ts` (model column mapping), `analyze.ts` (statistics and findings), `compare.ts` (comparison with previous brief), `bands.ts` (bands and fixed guidance), `llm.ts` (OpenRouter client), `write.ts` (written output and validation), `pipeline.ts` (orchestration), `samples.ts` (bundled sample tables).
 
@@ -18,7 +18,7 @@ Files: `types.ts` (shared types), `table.ts` (parsing), `mapping.ts` (model colu
 - `llm.ts:chatJson({ llm, purpose, system, user, schema, timeoutMs, maxTokens })` - validated JSON from OpenRouter; `llm.ts:LlmConfig` is `{ apiKey, model, baseUrl }`.
 - `pipeline.ts:UserError` - a problem the user can fix, with `statusCode` 404 or 422.
 - `write.ts:writeBrief(brief, llm): Promise<{ written, error }>` and `write.ts:checkText(text, ctx, allowFindings)`.
-- `samples.ts:SAMPLES` (ids `"A"`, `"B"`) and type `Sample`.
+- `samples.ts:SAMPLES` (ids `"A"` to `"E"`; A to D are consecutive three-day periods in Nov 2026, E is a month of daily averages) and type `Sample` (`label`, `period`, `description`, `text`).
 - `types.ts`: `AUDIENCES` (`ward_officer`, `housing_society`, `school`), `Audience`, `BandKey`, `Brief`, `Written`, `Finding`, `StationStat`, `Comparison`, and related types. The file header says it is shared with `apps/web` via `import type`, so it must stay free of Node-only imports.
 
 ## Invariants
@@ -33,7 +33,7 @@ Files: `types.ts` (shared types), `table.ts` (parsing), `mapping.ts` (model colu
 - `write.ts:checkVariant`: English must contain no Devanagari, Hindi must contain it, headline must contain `{BAND}`; a Hindi variant is replaced by fixed text if its placeholder set differs from English.
 - `write.ts:writeBrief`: `Written.status` is `"model"` only when no warnings were produced; fewer than 2 valid actions switches to `templateActions`; at most 6 actions kept; `what_changed` is `NO_PREVIOUS` when `brief.comparison` is null.
 - `write.ts:writeBrief` never throws for model failures; they return `fallbackWritten` plus an error string.
-- `llm.ts:chatJson` makes at most 2 attempts, retrying only retryable `LlmError`s (malformed/empty/truncated reply, schema mismatch, HTTP 5xx); timeouts and network errors are not retried. The timeout covers the whole call, including reading the reply body. A missing API key fails at once without a network call. Temperature is 0.2.
+- `llm.ts:chatJson` makes at most 2 attempts, retrying only retryable `LlmError`s (malformed/empty/truncated reply, schema mismatch, HTTP 5xx); timeouts and network errors are not retried. The reply is streamed (`stream: true`, server-sent events), so `timeoutMs` is the longest allowed silence, reset by every chunk including OpenRouter's keep-alive comments; one call is capped at 4 × `timeoutMs`. A plain JSON reply (a provider that ignores `stream`, or the test stub) is also accepted. Requests ask for low, hidden reasoning (`reasoning: { effort: "low", exclude: true }`). A missing API key fails at once without a network call. Temperature is 0.2.
 - `bands.ts:bandForPm25` thresholds: 30, 60, 90, 120, 250 on the rounded mean.
 
 ## Side Effects

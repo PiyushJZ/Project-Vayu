@@ -120,18 +120,33 @@ createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/chat/completions") {
-    const { messages } = JSON.parse(await readBody(req));
+    const { messages, stream } = JSON.parse(await readBody(req));
     const system = messages.find((m) => m.role === "system")?.content ?? "";
     const user = messages.find((m) => m.role === "user")?.content ?? "";
     const isMapping = system.startsWith("You map the columns");
     if (!isMapping && failWrites) {
       return send(res, 503, { error: { message: "stub model is switched off" } });
     }
-    const reply = isMapping ? mappingReply(user) : writeReply(user);
-    return send(res, 200, {
-      model: "stub/model",
-      choices: [{ message: { content: JSON.stringify(reply) }, finish_reason: "stop" }],
-    });
+    const content = JSON.stringify(isMapping ? mappingReply(user) : writeReply(user));
+    if (!stream) {
+      return send(res, 200, {
+        model: "stub/model",
+        choices: [{ message: { content }, finish_reason: "stop" }],
+      });
+    }
+    // Streamed like OpenRouter: a keep-alive comment, then the reply in pieces, then [DONE].
+    res.writeHead(200, { "Content-Type": "text/event-stream" });
+    res.write(": OPENROUTER PROCESSING\n\n");
+    for (let i = 0; i < content.length; i += 200) {
+      const chunk = {
+        model: "stub/model",
+        choices: [{ delta: { content: content.slice(i, i + 200) } }],
+      };
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    }
+    const last = { model: "stub/model", choices: [{ delta: {}, finish_reason: "stop" }] };
+    res.write(`data: ${JSON.stringify(last)}\n\ndata: [DONE]\n\n`);
+    return res.end();
   }
 
   send(res, 404, { error: { message: `no stub for ${req.method} ${req.url}` } });

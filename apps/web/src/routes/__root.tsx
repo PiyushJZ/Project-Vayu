@@ -13,7 +13,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "Civic Air Quality Briefing Studio",
+        title: "Vayu",
       },
       {
         name: "description",
@@ -25,7 +25,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/favicon.svg",
+        href: "/vayu-logo.svg",
       },
     ],
   }),

@@ -1,10 +1,7 @@
+import type { Sample } from "../../../server/src/brief/samples";
 import type { Audience, Brief } from "../../../server/src/brief/types";
 
-export interface SampleTable {
-  id: string;
-  label: string;
-  text: string;
-}
+export type SampleTable = Sample;
 
 /** The API shares the page's origin: the Worker serves both in production, and Vite proxies /api in development. */
 const base = "/api";

@@ -2,15 +2,10 @@ import { Link } from "@tanstack/react-router";
 
 import { ModeToggle } from "./mode-toggle";
 
-/** Three matching readings and one that differs: the studio's job in four shapes. */
+/** The Vayu logo, served from `public/` so the header, favicon and any other page use one file. */
 function Mark() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6 shrink-0 fill-current">
-      <circle cx="6.5" cy="6.5" r="4.5" />
-      <circle cx="17.5" cy="6.5" r="4.5" />
-      <circle cx="6.5" cy="17.5" r="4.5" />
-      <rect x="13" y="13" width="9" height="9" rx="1.5" className="fill-primary" />
-    </svg>
+    <img src="/vayu-logo.svg" alt="" width={40} height={40} className="-ml-1.5 size-10 shrink-0" />
   );
 }
 
@@ -26,7 +21,7 @@ export default function Header() {
         </a>
         <Link to="/" className="flex min-h-11 items-center gap-2.5 text-xl tracking-[-0.02em]">
           <Mark />
-          Briefing Studio
+          Vayu
         </Link>
         <ModeToggle />
       </div>

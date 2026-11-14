@@ -122,8 +122,9 @@ export function BriefView({
       {!writing && brief.writeError && (
         <Callout tone="error" role="alert" className="grid gap-3">
           <p className="measure">
-            The model could not write this brief ({brief.writeError}). The statistics above are
-            still correct. Fixed English guidance is shown below.
+            {/* writeError already reads "the model could not write the brief (reason)". */}
+            {brief.writeError.charAt(0).toUpperCase() + brief.writeError.slice(1)}. The statistics
+            above are still correct. Fixed English guidance is shown below.
           </p>
           <div>
             <Button type="button" variant="outline" size="sm" onClick={onRetryWrite}>

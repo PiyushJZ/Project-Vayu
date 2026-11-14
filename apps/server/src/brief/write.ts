@@ -4,7 +4,8 @@ import { AUDIENCE_LABEL, AUDIENCE_LEVERS, BANDS, GUIDANCE, fixedAdvisory } from 
 import { type LlmConfig, chatJson } from "./llm";
 import type { Action, AdvisoryText, AdvisoryVariant, Brief, NoteSection, Written } from "./types";
 
-const WRITE_TIMEOUT_MS = 90_000;
+/** Longest silence allowed while the reply streams in. The whole call may take a few times longer. */
+const WRITE_TIMEOUT_MS = 60_000;
 const NO_PREVIOUS = "No earlier brief to compare.";
 
 const Str = (max: number) => z.string().min(1).max(max);

@@ -2,14 +2,14 @@
 
 ## Overview
 
-Civic Air Quality Briefing Studio front end: a Vite + React 19 + TanStack Router single-page app. It calls the server at `/api` on its own origin and imports shared brief types from `../server/src/brief`. In production the server's Worker serves this app's `dist/`.
+Vayu front end: a Vite + React 19 + TanStack Router single-page app. It calls the server at `/api` on its own origin and imports shared brief types from `../server/src/brief`. In production the server's Worker serves this app's `dist/`.
 
 ## Local Interface & Invariants
 
 - `vite.config.ts`: default export `defineConfig` with dev server `port: 3000`, `strictPort: true` and a proxy from `/api` to `http://localhost:8080`, `resolve.tsconfigPaths: true`, and plugins `tailwindcss()`, `tanstackRouter({ target: "react", autoCodeSplitting: true })` and `react()`.
 - `package.json` scripts: `dev`, `build`, `serve`, `start`, `check-types` (`vite build && tsc --noEmit`). Browser tests live in `../../e2e` and run from the repository root.
 - The app has no environment variables.
-- `public/favicon.svg` is copied to the root of `dist/`.
+- `public/vayu-logo.svg` (the app logo, also the favicon) is copied to the root of `dist/`.
 - Invariant: `strictPort: true` makes the dev server fail rather than pick another port if 3000 is taken.
 - Side effects: `check-types` runs `vite build`, which writes `dist/`; the router plugin regenerates `src/routeTree.gen.ts`.
 

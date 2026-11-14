@@ -1,4 +1,4 @@
-# Civic Air Quality Briefing Studio
+# Vayu: Civic Air Quality Briefing Studio
 
 - **Author:** Piyush Jain
 - **Date:** 2026-11-14

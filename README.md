@@ -14,7 +14,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Playwright** - Browser tests for the whole product
 - **Oxlint** - Oxlint + Oxfmt (linting & formatting)
 
-## Civic Air Quality Briefing Studio
+## Vayu: civic air quality briefs
 
 Paste a messy air quality table, choose who is asking (ward officer, housing society or school), and get a brief.
 
@@ -24,7 +24,7 @@ Paste a messy air quality table, choose who is asking (ward officer, housing soc
 - Briefs are stored as JSON in Cloudflare D1. The table is created on first use and the local database is created by `wrangler dev`, so there is no database setup step.
 - Without an OpenRouter key the app still works: columns are matched by header words and all text is code-written, with the reason shown.
 
-Setup: put `OPENROUTER_API_KEY=...` in `apps/server/.env`. `OPENROUTER_MODEL` is set in `apps/server/wrangler.jsonc` and defaults to `openrouter/auto`, which can pick a different model on each call, so set a fixed model slug there for predictable speed and quality. Then run `pnpm run dev`, open http://localhost:3000, load sample A, generate, then load sample B and generate to see the comparison.
+Setup: put `OPENROUTER_API_KEY=...` in `apps/server/.env`. `OPENROUTER_MODEL` is set in `apps/server/wrangler.jsonc` and defaults to `openrouter/auto`, which can pick a different model on each call, so set a fixed model slug there for predictable speed and quality. Then run `pnpm run dev`, open http://localhost:3000, pick sample A from the sample menu, generate, then pick sample B and generate to see the comparison. You can also open a `.csv` or `.xlsx` file instead of pasting.
 
 ## Getting Started
 

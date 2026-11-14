@@ -2,7 +2,7 @@
 
 ## Overview
 
-The two applications of the Civic Air Quality Briefing Studio, deployed together as one Cloudflare Worker. The server parses pasted air quality tables, computes every figure in code, and stores briefs in Cloudflare D1. The web app is the Vite + React + TanStack Router front end; the Worker serves its built files and answers its calls under `/api`.
+The two applications of Vayu, deployed together as one Cloudflare Worker. The server parses pasted air quality tables, computes every figure in code, and stores briefs in Cloudflare D1. The web app is the Vite + React + TanStack Router front end; the Worker serves its built files and answers its calls under `/api`.
 
 ## Subdirectories & Boundaries
 

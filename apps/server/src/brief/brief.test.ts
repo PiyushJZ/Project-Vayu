@@ -364,6 +364,100 @@ describe("chatJson", () => {
   });
 });
 
+describe("chatJson streaming", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+  const llm = {
+    apiKey: "test-key",
+    model: "test/model",
+    baseUrl: "https://openrouter.test/api/v1",
+  };
+
+  /** Sends the given SSE events, waiting `gapMs` before each one. */
+  function sse(events: string[], gapMs: number) {
+    return (async (_url: string, init: RequestInit) => {
+      assert.equal(JSON.parse(init.body as string).stream, true);
+      const enc = new TextEncoder();
+      const body = new ReadableStream({
+        async start(controller) {
+          for (const e of events) {
+            await new Promise((r) => setTimeout(r, gapMs));
+            if (init.signal!.aborted) return controller.error(init.signal!.reason);
+            controller.enqueue(enc.encode(e));
+          }
+          controller.close();
+        },
+      });
+      return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
+    }) as typeof fetch;
+  }
+  const delta = (content: string) =>
+    `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
+
+  it("joins streamed pieces, and keeps going past the silence deadline while pieces arrive", async () => {
+    // Six pieces 20ms apart take longer than the 50ms deadline, but no gap reaches it.
+    globalThis.fetch = sse(
+      [
+        ": OPENROUTER PROCESSING\n\n",
+        delta('{"ok"'),
+        delta(":"),
+        delta("tr"),
+        delta("ue}"),
+        "data: [DONE]\n\n",
+      ],
+      20,
+    );
+    const reply = await chatJson({
+      llm,
+      purpose: "test",
+      system: "s",
+      user: "u",
+      schema: z.object({ ok: z.boolean() }),
+      timeoutMs: 50,
+      maxTokens: 10,
+    });
+    assert.deepEqual(reply, { ok: true });
+  });
+
+  it("times out when the stream goes quiet", async () => {
+    globalThis.fetch = sse([delta("{"), delta("}")], 80);
+    await assert.rejects(
+      chatJson({
+        llm,
+        purpose: "test",
+        system: "s",
+        user: "u",
+        schema: z.object({}),
+        timeoutMs: 40,
+        maxTokens: 10,
+      }),
+      /no reply within 0 seconds/,
+    );
+  });
+});
+
+describe("samples", () => {
+  it("each sample parses, maps and names a hotspot", () => {
+    assert.deepEqual(
+      SAMPLES.map((s) => s.id),
+      ["A", "B", "C", "D", "E"],
+    );
+    for (const s of SAMPLES) {
+      const table = parseTable(s.text);
+      const mapping = guessMapping(table.headers, "test");
+      assert.ok(mapping, `sample ${s.id} has a PM2.5 column`);
+      const a = analyze(table, mapping, null);
+      assert.ok(
+        a.findings.some((f) => f.kind === "hotspot"),
+        `sample ${s.id} has a hotspot`,
+      );
+      assert.ok(s.label.includes(s.period));
+    }
+  });
+});
+
 describe("checkText", () => {
   const ctx = { ids: new Set(["F1", "F3"]), names: ["Sector 5 Park", "Idgah Hills"] };
   const ok = (t: string, allow = true) => checkText(t, ctx, allow).ok;

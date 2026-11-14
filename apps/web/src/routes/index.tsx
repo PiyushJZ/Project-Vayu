@@ -1,7 +1,17 @@
 import { Button } from "@project-vayu/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@project-vayu/ui/components/dropdown-menu";
 import { Textarea } from "@project-vayu/ui/components/textarea";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, FileUp, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AUDIENCE_LABEL } from "../../../server/src/brief/bands";
@@ -9,6 +19,7 @@ import { AUDIENCES, type Audience, type Brief } from "../../../server/src/brief/
 import { Callout } from "@/components/brief-parts";
 import { BriefView } from "@/components/brief-view";
 import { api, type SampleTable } from "@/lib/api";
+import { TABLE_FILE_ACCEPT, readTableFile } from "@/lib/table-file";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -29,7 +40,34 @@ function HomeComponent() {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // The picker shows the sample whose text is in the box, so editing the text clears the choice.
+  const loadedSample = samples.find((s) => s.text === text) ?? null;
+  // Samples A to D are consecutive periods; E covers a longer stretch on its own.
+  const seriesSamples = samples.filter((s) => s.id !== "E");
+  const otherSamples = samples.filter((s) => s.id === "E");
+
+  async function openFile(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    try {
+      setText(await readTableFile(file));
+      setFileName(file.name);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  function loadSample(id: string) {
+    const sample = samples.find((s) => s.id === id);
+    if (!sample) return;
+    setText(sample.text);
+    setFileName(null);
+  }
 
   useEffect(() => {
     api
@@ -80,12 +118,13 @@ function HomeComponent() {
         <div className="grid content-start gap-8 lg:col-span-6 xl:col-span-5">
           <div className="grid gap-5">
             <h1 id="studio-title" className="enter-rise t-h1">
-              Civic Air Quality Briefing Studio
+              Vayu
             </h1>
             <p className="enter-rise measure t-lead [--enter-step:1]">
-              Paste a table of air quality readings, even a messy one. Code works out the averages,
-              gaps and hotspots and links each finding to its rows. The model then writes the
-              actions, a briefing note and a citizen advisory in English and Hindi.
+              Civic air quality briefs. Paste or open a table of air quality readings, even a messy
+              one. Code works out the averages, gaps and hotspots and links each finding to its
+              rows. The model then writes the actions, a briefing note and a citizen advisory in
+              English and Hindi.
             </p>
           </div>
 
@@ -118,39 +157,112 @@ function HomeComponent() {
         </div>
 
         <div className="enter-settle grid min-w-0 content-start gap-4 rounded-xl border bg-card p-4 sm:p-6 lg:col-span-6 xl:col-start-7">
-          <label htmlFor="table" className="t-label">
-            Air quality table
-          </label>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <label htmlFor="table" className="t-label">
+              Air quality table
+            </label>
+            {fileName && (
+              <span className="t-small min-w-0 truncate text-muted-foreground">
+                From {fileName}
+              </span>
+            )}
+          </div>
           <Textarea
             id="table"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setFileName(null);
+            }}
+            onDragOver={(e) => {
+              if (busy || !e.dataTransfer.types.includes("Files")) return;
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              if (busy || !e.dataTransfer.files.length) return;
+              e.preventDefault();
+              setDragging(false);
+              void openFile(e.dataTransfer.files[0]);
+            }}
+            data-dragging={dragging || undefined}
             disabled={busy}
             rows={10}
             wrap="off"
             spellCheck={false}
-            placeholder="Paste CSV, tab-separated or semicolon-separated rows with a header line. The columns can be in any order."
-            className="h-56 overflow-auto lg:h-[clamp(13rem,38svh,24rem)] font-mono text-[0.8125rem]/[1.7] placeholder:font-sans placeholder:text-base placeholder:whitespace-normal"
+            placeholder="Paste CSV, tab-separated or semicolon-separated rows with a header line, or drop a .csv or .xlsx file here. The columns can be in any order."
+            className="data-dragging:border-primary data-dragging:bg-primary/5 h-56 overflow-auto lg:h-[clamp(13rem,38svh,24rem)] font-mono text-[0.8125rem]/[1.7] placeholder:font-sans placeholder:text-base placeholder:whitespace-normal"
           />
           <div className="grid gap-3">
             <div className="flex flex-wrap gap-2">
-              {samples.map((s) => (
-                <Button
-                  key={s.id}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setText(s.text)}
-                  className="max-sm:h-auto max-sm:min-h-11 max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={busy || samples.length === 0}
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="max-sm:flex-1 max-sm:justify-between"
+                    />
+                  }
                 >
-                  Load {s.label}
-                </Button>
-              ))}
+                  {loadedSample
+                    ? `Sample ${loadedSample.id}: ${loadedSample.period}`
+                    : "Load a sample"}
+                  <ChevronDown aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-auto max-w-[min(26rem,calc(100vw-2rem))]">
+                  <DropdownMenuRadioGroup value={loadedSample?.id ?? ""} onValueChange={loadSample}>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Consecutive periods: run in order</DropdownMenuLabel>
+                      {seriesSamples.map((s) => (
+                        <SampleItem key={s.id} sample={s} />
+                      ))}
+                    </DropdownMenuGroup>
+                    {otherSamples.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuGroup>
+                          <DropdownMenuLabel>Longer period</DropdownMenuLabel>
+                          {otherSamples.map((s) => (
+                            <SampleItem key={s.id} sample={s} />
+                          ))}
+                        </DropdownMenuGroup>
+                      </>
+                    )}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+                className="max-sm:flex-1"
+              >
+                <FileUp aria-hidden="true" />
+                Open .csv or .xlsx
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={TABLE_FILE_ACCEPT}
+                aria-label="Open a .csv or .xlsx file"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={(e) => {
+                  void openFile(e.target.files?.[0]);
+                  // Let the same file be picked again after it is edited on disk.
+                  e.target.value = "";
+                }}
+              />
             </div>
             <p className="t-small text-muted-foreground">
-              Sample tables use real Bhopal CPCB station names with invented readings. Run A, then
-              B, to see what changed.
+              Sample tables use real Bhopal CPCB station names with invented readings. Run A, B, C
+              and D in order to see what changed each time. An .xlsx file is read from its first
+              sheet.
             </p>
           </div>
 
@@ -202,5 +314,19 @@ function HomeComponent() {
         )}
       </div>
     </>
+  );
+}
+
+function SampleItem({ sample }: { sample: SampleTable }) {
+  return (
+    <DropdownMenuRadioItem value={sample.id} closeOnClick className="items-start">
+      <span className="grid gap-0.5">
+        <span>
+          <span className="font-medium">Sample {sample.id}</span>
+          <span className="text-muted-foreground"> · {sample.period}</span>
+        </span>
+        <span className="t-small text-muted-foreground">{sample.description}</span>
+      </span>
+    </DropdownMenuRadioItem>
   );
 }
