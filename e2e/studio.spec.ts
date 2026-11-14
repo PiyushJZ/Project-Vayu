@@ -94,6 +94,11 @@ test("writes a brief for sample A and links every figure to its source rows", as
   await expect(openFinding).toHaveCount(1);
   await expect(openFinding.getByRole("columnheader", { name: "PM2.5 (µg/m³)" })).toBeVisible();
   await expect(openFinding.getByRole("row")).not.toHaveCount(1);
+
+  // A finding from one row says so in the singular.
+  const findings = section(page, "Findings and their source rows");
+  await expect(findings.getByText("1 source row", { exact: true })).toBeVisible();
+  await expect(findings.getByText("1 source rows", { exact: true })).toHaveCount(0);
 });
 
 test("shows the advisory in English and Hindi at both reading levels", async ({ page }) => {
@@ -212,4 +217,12 @@ test("fits a phone screen without sideways scrolling @mobile", async ({ page }) 
   });
   const box = (await marker.boundingBox())!;
   expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+
+  // The comparison table wraps instead of scrolling, so every change reads without a swipe.
+  await generate(page, "B");
+  const change = section(page, "What changed since the last brief").getByRole("columnheader", {
+    name: "Change",
+  });
+  const changeBox = (await change.boundingBox())!;
+  expect(changeBox.x + changeBox.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
