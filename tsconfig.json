@@ -1,0 +1,3 @@
+{
+  "extends": "@project-vayu/config/tsconfig.base.json"
+}
