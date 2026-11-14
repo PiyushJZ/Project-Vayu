@@ -1,6 +1,0 @@
-{
-  "extends": "@project-vayu/config/tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true
-  }
-}

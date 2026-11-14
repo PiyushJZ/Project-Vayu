@@ -12,16 +12,9 @@
     "check-types": "pnpm -r check-types",
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
-    "db:push": "pnpm --filter @project-vayu/db db:push",
-    "db:studio": "pnpm --filter @project-vayu/db db:studio",
-    "db:generate": "pnpm --filter @project-vayu/db db:generate",
-    "db:migrate": "pnpm --filter @project-vayu/db db:migrate",
-    "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
-    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+    "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
+    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
     "check": "oxlint && oxfmt --write"
-  },
-  "dependencies": {
-    "zod": "catalog:"
   },
   "devDependencies": {
     "@project-vayu/config": "workspace:*",

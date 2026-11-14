@@ -10,9 +10,19 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Shared UI package** - shadcn/ui primitives live in `packages/ui`
 - **Fastify** - Fast, low-overhead web framework
 - **Node.js** - Runtime environment
-- **Prisma** - TypeScript-first ORM
-- **SQLite/Turso** - Database engine
+- **SQLite** - Database engine, used through Node's built-in `node:sqlite`
 - **Oxlint** - Oxlint + Oxfmt (linting & formatting)
+
+## Civic Air Quality Briefing Studio
+
+Paste a messy air quality table, choose who is asking (ward officer, housing society or school), and get a brief.
+
+- Code parses the table and computes every number: means, gaps, unreliable readings, trend, hotspot, the CPCB PM2.5 band, and the change since the previous brief. Each finding links to the rows it came from.
+- The model (OpenRouter) is called twice. First it maps the table's columns and units. Then it writes ranked actions, an internal briefing note and a citizen advisory in English and Hindi at two reading levels. It refers to figures only by finding id, and code rejects any number it types itself. Text that fails a check is replaced by labelled code-written text.
+- Hindi is machine-translated and is always labelled "review before publishing".
+- Briefs are stored as JSON in SQLite through `node:sqlite` (Node 22.5 or later). The database file is created on first run at the path in `DATABASE_URL`, so there is no database setup step.
+
+Setup: put `OPENROUTER_API_KEY` in `apps/server/.env`. `OPENROUTER_MODEL` defaults to `openrouter/auto`, which can pick a different model on each call, so set a fixed model slug for predictable speed and quality. Then run `pnpm run dev`, open http://localhost:3000, load sample A, generate, then load sample B and generate to see the comparison. Run the server tests with `pnpm --filter server test`.
 
 ## Getting Started
 
@@ -22,34 +32,14 @@ First, install the dependencies:
 pnpm install
 ```
 
-## Database Setup
-
-Generate the Prisma client before development, typechecking, or building, including in CI and deployment builds. Run this again after changing the Prisma schema:
-
-```bash
-pnpm run db:generate
-```
-
-This project uses SQLite with Prisma.
-
-1. SQLite stores data in a local file, so no database server is needed. Applying the schema creates the file `DATABASE_URL` points to.
-
-2. Update your `.env` file in the `apps/server` directory with the appropriate connection details if needed.
-
-3. Apply the schema to your database:
-
-```bash
-pnpm run db:push
-```
-
-Then, run the development server:
+Then run the development server:
 
 ```bash
 pnpm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the web application.
+The API is running at [http://localhost:8080](http://localhost:8080).
 
 ## UI Customization
 
@@ -81,11 +71,11 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 
 Each app owns its environment schema in `.env.schema`. Varlock generates `src/env.ts` during installation; run `pnpm run env:generate` after changing a schema. Commit schemas, and keep secrets in ignored env files or your deployment platform.
 
-Import the generated `ENV` accessor in application code. Shared database and auth packages receive configuration or initialized clients from the application. See [Varlock's monorepo guide](https://varlock.dev/guides/monorepos/).
+Import the generated `ENV` accessor in application code. See [Varlock's monorepo guide](https://varlock.dev/guides/monorepos/).
 
-Bun's automatic env loading is disabled in `bunfig.toml`; the framework integration or server bootstrap loads Varlock. Node deployments must include Varlock and its dependencies alongside the app schema.
+Node deployments must include Varlock and its dependencies alongside the app schema.
 
-Run standalone Node/Bun tools that use Varlock from the owning app directory so they load that app's schema and env files. `env:generate` only generates TypeScript files; it does not initialize environment values in a subsequent command.
+Run standalone Node tools that use Varlock from the owning app directory so they load that app's schema and env files. `env:generate` only generates TypeScript files; it does not initialize environment values in a subsequent command.
 
 ## Git Hooks and Formatting
 
@@ -99,8 +89,7 @@ project-vayu/
 │   ├── web/         # Frontend application (React + TanStack Router)
 │   └── server/      # Backend API (Fastify)
 ├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   └── db/          # Database schema & queries
+│   └── ui/          # Shared shadcn/ui components and styles
 ```
 
 ## Available Scripts
@@ -110,8 +99,5 @@ project-vayu/
 - `pnpm run dev:web`: Start only the web application
 - `pnpm run dev:server`: Start only the server
 - `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run db:push`: Push schema changes to database
-- `pnpm run db:generate`: Generate database client/types
-- `pnpm run db:migrate`: Run database migrations
-- `pnpm run db:studio`: Open database studio UI
+- `pnpm --filter server test`: Run the server tests
 - `pnpm run check`: Run Oxlint and Oxfmt

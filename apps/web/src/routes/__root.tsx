@@ -1,4 +1,3 @@
-import { Toaster } from "@project-vayu/ui/components/sonner";
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
@@ -14,11 +13,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "project-vayu",
+        title: "Civic Air Quality Briefing Studio",
       },
       {
         name: "description",
-        content: "project-vayu is a web application",
+        content:
+          "Turn raw air quality tables into local actions, a briefing note and a citizen advisory.",
       },
     ],
     links: [
@@ -44,7 +44,6 @@ function RootComponent() {
           <Header />
           <Outlet />
         </div>
-        <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />
     </>
