@@ -12,10 +12,12 @@ export interface LlmConfig {
 /** However long tokens keep arriving, one call never runs longer than this many silence deadlines. */
 const MAX_CALL_FACTOR = 4;
 
+/** `message` is shown to users and stored with the brief; `detail` only goes to the server log. */
 class LlmError extends Error {
   constructor(
     message: string,
     readonly retryable: boolean,
+    readonly detail?: string,
   ) {
     super(message);
   }
@@ -97,7 +99,12 @@ async function callOnce(
   timeoutMs: number,
   maxTokens: number,
 ): Promise<Reply> {
-  if (!llm.apiKey) throw new LlmError("OPENROUTER_API_KEY is not set on the server", false);
+  if (!llm.apiKey)
+    throw new LlmError(
+      "the model is not set up on this server",
+      false,
+      "OPENROUTER_API_KEY is unset",
+    );
   // The reply is streamed, so the deadline is for silence, not for the whole reply: a long brief
   // from a slow model keeps going as long as tokens keep arriving. A hard cap stops a runaway reply.
   const controller = new AbortController();
@@ -148,10 +155,7 @@ async function callOnce(
     }
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 200);
-      throw new LlmError(
-        `OpenRouter returned ${res.status}${body ? `: ${body}` : ""}`,
-        res.status >= 500,
-      );
+      throw new LlmError(`OpenRouter returned ${res.status}`, res.status >= 500, body || undefined);
     }
     heard();
 
@@ -199,6 +203,7 @@ function log(
   outcome: string,
   model?: string,
   usage?: unknown,
+  detail?: string,
 ) {
   console.info(
     JSON.stringify({
@@ -207,6 +212,7 @@ function log(
       attempt: attempt + 1,
       ms: Date.now() - started,
       outcome,
+      detail,
       model,
       usage,
     }),
@@ -249,7 +255,8 @@ export async function chatJson<T>(opts: {
       );
     } catch (e) {
       lastError = e;
-      log(opts.purpose, attempt, started, (e as Error).message);
+      const detail = e instanceof LlmError ? e.detail : undefined;
+      log(opts.purpose, attempt, started, (e as Error).message, undefined, undefined, detail);
       if (!(e instanceof LlmError) || !e.retryable) break;
       user = `${opts.user}\n\nYour previous reply was rejected: ${e.message}. Reply again with one valid JSON object that follows the schema exactly, and nothing else.`;
     }

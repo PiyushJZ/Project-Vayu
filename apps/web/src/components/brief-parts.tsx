@@ -158,25 +158,31 @@ function Chevron() {
 }
 
 export function CopyButton({ text, label }: { text: string; label: string }) {
-  const [done, setDone] = useState(false);
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        navigator.clipboard
-          .writeText(text)
-          .then(() => {
-            setDone(true);
-            setTimeout(() => setDone(false), 1500);
-          })
-          .catch(() => undefined);
-      }}
-    >
-      {done ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-      {done ? "Copied" : label}
-    </Button>
+    <span className="inline-flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+      <span role="status" className="t-small text-destructive empty:hidden">
+        {state === "failed" && "The browser blocked copying. Select the text and copy it by hand."}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          // navigator.clipboard is undefined outside a secure context, so that failure lands here too.
+          Promise.resolve()
+            .then(() => navigator.clipboard.writeText(text))
+            .then(() => {
+              setState("done");
+              setTimeout(() => setState("idle"), 1500);
+            })
+            .catch(() => setState("failed"));
+        }}
+      >
+        {state === "done" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        {state === "done" ? "Copied" : label}
+      </Button>
+    </span>
   );
 }
 
@@ -488,7 +494,7 @@ export function ComparisonView({ brief }: { brief: Brief }) {
       <CardContent className="grid gap-x-6 gap-y-6 lg:grid-cols-12">
         <div className="grid content-start gap-4 lg:col-span-6 xl:col-span-5">
           <p className="text-muted-foreground">
-            Compared with brief #{c.previousId} ({c.previousLabel}; {c.previousPeriod}).
+            Compared with the previous brief: {c.previousLabel} ({c.previousPeriod}).
           </p>
           <dl>
             {facts.map(([k, v]) => (

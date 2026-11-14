@@ -26,8 +26,6 @@ function decodeText(bytes: ArrayBuffer): string {
   }
 }
 
-// ---- zip ----
-
 async function unzip(buffer: ArrayBuffer): Promise<Map<string, () => Promise<string>>> {
   const view = new DataView(buffer);
   const bytes = new Uint8Array(buffer);
@@ -66,8 +64,6 @@ async function unzip(buffer: ArrayBuffer): Promise<Map<string, () => Promise<str
   }
   return entries;
 }
-
-// ---- xlsx ----
 
 const xml = (text: string) => new DOMParser().parseFromString(text, "application/xml");
 const all = (node: Document | Element, tag: string) => [...node.getElementsByTagNameNS("*", tag)];

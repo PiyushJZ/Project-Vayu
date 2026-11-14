@@ -48,7 +48,10 @@ export async function createBrief(
     audience: input.audience,
     label: sample
       ? sample.label
-      : `Pasted table, ${now.toISOString().slice(0, 16).replace("T", " ")} UTC`,
+      : pastedLabel(
+          a.stations.map((s) => s.name),
+          a.days,
+        ),
     sample: sample?.id ?? null,
     status: "stats",
     mapping,
@@ -65,6 +68,17 @@ export async function createBrief(
     written: null,
     writeError: null,
   });
+}
+
+/** Names the stations and the dates, the way a sample label does: "Idgah Hills and T T Nagar, 3 to 5 Nov 2026". */
+function pastedLabel(stations: string[], days: string | null): string {
+  const place =
+    stations.length > 3
+      ? `${stations.length} stations`
+      : stations.length > 1
+        ? `${stations.slice(0, -1).join(", ")} and ${stations.at(-1)}`
+        : (stations[0] ?? "Pasted table");
+  return days ? `${place}, ${days}` : place;
 }
 
 /** The second model call. Never throws for model problems: they become a labelled fallback. */

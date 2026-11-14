@@ -62,22 +62,14 @@ export function BriefView({
       <header className="grid grid-cols-1 gap-6">
         <div className="grid gap-x-6 gap-y-6 xl:grid-cols-12">
           <div className="grid content-start gap-4 xl:col-span-5">
-            <h2 className="t-h2">
-              Brief #{brief.id} for a {AUDIENCE_LABEL[brief.audience].toLowerCase()}
-            </h2>
+            <h2 className="t-h2">{brief.label}</h2>
             <p className="text-muted-foreground">
-              {brief.label}. Period: {brief.period}.
+              For a {AUDIENCE_LABEL[brief.audience].toLowerCase()}. Period: {brief.period}.
             </p>
             <p>
               {c.validPm25} of {c.totalRows} rows had a usable PM2.5 reading. {c.gapRows} rows have
               gaps and {c.suspectRows} rows have readings that were excluded as unreliable.
             </p>
-            {brief.sample && (
-              <Callout role="note" className="t-small font-medium">
-                Sample data. Station names are real Bhopal CPCB stations, but every reading is
-                invented.
-              </Callout>
-            )}
           </div>
           <div className="xl:col-span-6 xl:col-start-7">
             <BandScale brief={brief} />
@@ -125,6 +117,20 @@ export function BriefView({
             {/* writeError already reads "the model could not write the brief (reason)". */}
             {brief.writeError.charAt(0).toUpperCase() + brief.writeError.slice(1)}. The statistics
             above are still correct. Fixed English guidance is shown below.
+          </p>
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={onRetryWrite}>
+              Try writing again
+            </Button>
+          </div>
+        </Callout>
+      )}
+
+      {!writing && !written && !brief.writeError && (
+        <Callout tone="error" role="alert" className="grid gap-3">
+          <p className="measure">
+            The text of this brief was not written, because the request did not reach the model. The
+            statistics above are still correct.
           </p>
           <div>
             <Button type="button" variant="outline" size="sm" onClick={onRetryWrite}>

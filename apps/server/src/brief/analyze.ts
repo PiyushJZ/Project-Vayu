@@ -1,6 +1,6 @@
 import { BANDS, BAND_SOURCE, bandForPm25 } from "./bands";
 import { buildChangeFindings, compareBriefs } from "./compare";
-import { type ParsedTable, type Reading, applyMapping, formatTime } from "./table";
+import { type ParsedTable, type Reading, applyMapping, formatDayRange, formatTime } from "./table";
 import type {
   Brief,
   ColumnMapping,
@@ -114,6 +114,8 @@ interface Analysis {
   rowFlags: Record<number, RowFlag[]>;
   coverage: Coverage;
   period: string;
+  /** The period as dates only, or null without readable timestamps. */
+  days: string | null;
   overall: { mean: number | null; validPm25: number };
   stations: StationStat[];
   band: Brief["band"];
@@ -191,6 +193,7 @@ export function analyze(
   const period = times.length
     ? `${formatTime(Math.min(...times))} to ${formatTime(Math.max(...times))}`
     : "period unknown (no readable timestamps)";
+  const days = times.length ? formatDayRange(Math.min(...times), Math.max(...times)) : null;
 
   const coverage: Coverage = {
     totalRows: readings.length,
@@ -350,6 +353,7 @@ export function analyze(
     rowFlags,
     coverage,
     period,
+    days,
     overall: { mean: overallMean, validPm25: valid.length },
     stations,
     band,

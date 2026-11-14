@@ -9,12 +9,13 @@ import { chatJson } from "./llm";
 import { createBrief, writeForBrief } from "./pipeline";
 import { SAMPLES } from "./samples";
 import { guessMapping, parseNumber, parseTable, parseTimestamp } from "./table";
+import { messyA, messyB } from "./test-tables";
 import { checkText } from "./write";
 import type { Services } from "../services";
 import { type SqlDatabase, type SqlStatement, openStore } from "../store";
 
-const sampleA = SAMPLES[0]!.text;
-const sampleB = SAMPLES[1]!.text;
+const sampleA = messyA();
+const sampleB = messyB();
 const heuristic = async (t: ReturnType<typeof parseTable>) => guessMapping(t.headers, "test");
 const ms = (iso: string) => Date.parse(`${iso}Z`);
 
@@ -51,7 +52,7 @@ describe("parsing", () => {
   });
 });
 
-describe("analysis of sample A", () => {
+describe("analysis of messy table A", () => {
   const table = parseTable(sampleA);
   const a = analyze(table, guessMapping(table.headers, "test")!, null);
 
@@ -130,7 +131,7 @@ describe("pipeline with an in-memory store", () => {
     while (databases.length) databases.pop()!.close();
   });
 
-  it("compares sample B with sample A and handles mg/m3 and a station with too few readings", async () => {
+  it("compares messy table B with A and handles mg/m3 and a station with too few readings", async () => {
     const services = fresh();
     const first = await createBrief(
       services,
@@ -138,10 +139,10 @@ describe("pipeline with an in-memory store", () => {
       heuristic,
     );
     assert.equal(first.comparison, null);
-    assert.equal(first.sample, "A");
+    assert.equal(first.sample, null);
 
     const second = await createBrief(services, { text: sampleB, audience: "school" }, heuristic);
-    assert.equal(second.sample, "B");
+    assert.equal(second.sample, null);
     assert.equal(second.mapping.pm25Unit, "mg/m3");
     const idgah = second.stations.find((s) => s.name === "Idgah Hills")!;
     assert.equal(idgah.qualifies, false);
@@ -177,6 +178,19 @@ describe("pipeline with an in-memory store", () => {
     );
     assert.equal((await services.store.latest())!.id, second.id);
     assert.equal(await services.store.get(999), null);
+  });
+
+  it("recognises a bundled sample and names the brief after its place and dates", async () => {
+    const services = fresh();
+    const sample = await createBrief(
+      services,
+      { text: SAMPLES[0]!.text, audience: "school" },
+      heuristic,
+    );
+    assert.equal(sample.sample, "A");
+    assert.equal(sample.label, "Bhopal, 3 to 5 Nov 2026");
+    const pasted = await createBrief(services, { text: sampleA, audience: "school" }, heuristic);
+    assert.equal(pasted.label, "Idgah Hills, T T Nagar and Paryavaran Parisar, 3 to 5 Nov 2026");
   });
 
   it("rejects a table with no PM2.5 column", async () => {
@@ -315,10 +329,10 @@ describe("pipeline with an in-memory store", () => {
     }) as typeof fetch;
     const brief = await createBrief(services, { text: sampleA, audience: "school" });
     assert.equal(brief.mapping.source, "heuristic");
-    assert.match(brief.mapping.warning!, /OPENROUTER_API_KEY is not set/);
+    assert.match(brief.mapping.warning!, /not set up on this server/);
     const done = await writeForBrief(services, brief.id);
     assert.equal(done.status, "fallback");
-    assert.match(done.writeError!, /OPENROUTER_API_KEY is not set/);
+    assert.match(done.writeError!, /not set up on this server/);
   });
 
   it("reports a missing brief as a 404 the user can read", async () => {

@@ -6,8 +6,9 @@ Entry point and wiring of the `server` Worker: the Hono app, the Worker's bindin
 
 ## Interface
 
-- `index.ts` - Worker entry; default export is the Hono app, mounted at base path `/api`. Registers the evlog middleware, `GET /api/health` returning `"OK"`, and `briefRoutes`.
-- `services.ts:Env` - the Worker's bindings: `DB`, optional `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`.
+- `index.ts` - Worker entry; default export is the Hono app, mounted at base path `/api`. Registers the evlog middleware, security headers and `Cache-Control: no-store`, `GET /api/health` returning `"OK"`, then `access.ts:requireAccess`, a 1.5 MB body limit and `access.ts:rateLimit` on `/briefs/*`, and `briefRoutes`.
+- `access.ts:requireAccess` - verifies the `Cf-Access-Jwt-Assertion` token (RS256, issuer and audience) against the team's Access certs when `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set; otherwise passes every request. `access.ts:rateLimit` - calls `BRIEF_RATE_LIMIT` for each POST, keyed on the Access user or the client address; answers 429 when over.
+- `services.ts:Env` - the Worker's bindings: `DB`, optional `BRIEF_RATE_LIMIT`, optional `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`, optional `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`.
 - `services.ts:servicesFor(env): Services` returning `{ store, llm }`; `services.ts:Services` is what the brief pipeline takes.
 - `store.ts:openStore(db: SqlDatabase): Store` returning `{ insert, update, get, latest }`, all async; `store.ts:Store` type.
   - `insert(brief: Omit<Brief, "id">): Promise<Brief>`, `update(brief)`, `get(id): Promise<Brief | null>`, `latest(): Promise<Brief | null>`.

@@ -34,7 +34,7 @@ export default defineConfig({
       // Build the web app first (`pnpm test:e2e` does).
       name: "worker",
       cwd: "apps/server",
-      command: `rm -rf .wrangler/e2e && pnpm exec wrangler dev --port ${APP_PORT} --persist-to .wrangler/e2e --env-file ../../e2e/worker.env`,
+      command: `rm -rf .wrangler/e2e && pnpm exec wrangler dev --env e2e --port ${APP_PORT} --persist-to .wrangler/e2e --env-file ../../e2e/worker.env`,
       url: `http://localhost:${APP_PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

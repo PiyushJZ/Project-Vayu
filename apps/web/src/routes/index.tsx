@@ -138,7 +138,7 @@ function HomeComponent() {
                   aria-pressed={audience === a}
                   onClick={() => setAudience(a)}
                   disabled={busy}
-                  className="group grid grid-cols-[auto_1fr] items-start gap-x-3 rounded-lg border border-border-strong px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-[120ms] ease-ui hover:border-[color-mix(in_oklab,var(--foreground)_36%,transparent)] hover:bg-accent hover:duration-150 disabled:pointer-events-none disabled:opacity-60 aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:shadow-[inset_0_0_0_1px_var(--primary)]"
+                  className="group grid grid-cols-[auto_1fr] items-start gap-x-3 rounded-lg border border-border-strong px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-[120ms] ease-ui not-disabled:hover:border-[color-mix(in_oklab,var(--foreground)_36%,transparent)] not-disabled:hover:bg-accent hover:duration-150 disabled:cursor-not-allowed disabled:opacity-60 aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:shadow-[inset_0_0_0_1px_var(--primary)]"
                 >
                   <span
                     aria-hidden="true"
@@ -260,9 +260,8 @@ function HomeComponent() {
               />
             </div>
             <p className="t-small text-muted-foreground">
-              Sample tables use real Bhopal CPCB station names with invented readings. Run A, B, C
-              and D in order to see what changed each time. An .xlsx file is read from its first
-              sheet.
+              Samples are real readings from three Bhopal CPCB stations, via OpenAQ. Run A, B, C and
+              D in order to see what changed each time. An .xlsx file is read from its first sheet.
             </p>
           </div>
 
@@ -280,7 +279,9 @@ function HomeComponent() {
               disabled={busy || text.trim() === ""}
               className="max-sm:w-full"
             >
-              {busy && <Loader2 aria-hidden="true" className="animate-spin" />}
+              {busy && (
+                <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+              )}
               {phase === "analysing"
                 ? "Reading the table…"
                 : phase === "writing"
@@ -305,13 +306,7 @@ function HomeComponent() {
       </section>
 
       <div ref={resultRef}>
-        {brief && (
-          <BriefView
-            brief={brief}
-            writing={phase === "writing"}
-            onRetryWrite={() => write(brief.id)}
-          />
-        )}
+        {brief && <BriefView brief={brief} writing={busy} onRetryWrite={() => write(brief.id)} />}
       </div>
     </>
   );

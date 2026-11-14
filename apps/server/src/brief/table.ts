@@ -206,6 +206,21 @@ export function parseTimestamp(cell: string): number | null {
   return null;
 }
 
+const monthName = (d: Date) =>
+  MONTHS[d.getUTCMonth()]![0]!.toUpperCase() + MONTHS[d.getUTCMonth()]!.slice(1);
+
+/** "3 to 5 Nov 2026", "28 Oct to 2 Nov 2026" or "30 Dec 2025 to 2 Jan 2026". */
+export function formatDayRange(fromMs: number, toMs: number): string {
+  const a = new Date(fromMs);
+  const b = new Date(toMs);
+  const end = `${b.getUTCDate()} ${monthName(b)} ${b.getUTCFullYear()}`;
+  if (a.getUTCFullYear() !== b.getUTCFullYear())
+    return `${a.getUTCDate()} ${monthName(a)} ${a.getUTCFullYear()} to ${end}`;
+  if (a.getUTCMonth() !== b.getUTCMonth()) return `${a.getUTCDate()} ${monthName(a)} to ${end}`;
+  if (a.getUTCDate() !== b.getUTCDate()) return `${a.getUTCDate()} to ${end}`;
+  return end;
+}
+
 export function formatTime(ms: number): string {
   const d = new Date(ms);
   const hh = String(d.getUTCHours()).padStart(2, "0");

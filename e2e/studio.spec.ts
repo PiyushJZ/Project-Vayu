@@ -24,13 +24,6 @@ async function generate(page: Page, sample: "A" | "B", audience?: string) {
   await page.getByRole("button", { name: "Generate brief" }).click();
 }
 
-/** The number in the "Brief #n for a ..." heading. */
-async function briefId(page: Page): Promise<number> {
-  const heading = page.getByRole("heading", { name: /^Brief #\d+ for a / });
-  await expect(heading).toBeVisible();
-  return Number((await heading.innerText()).match(/#(\d+)/)![1]);
-}
-
 /** One titled section of the brief. */
 const section = (page: Page, title: string) =>
   page.getByRole("region", { name: title, exact: true });
@@ -71,7 +64,7 @@ test("loads the studio with the sample tables and nothing broken", async ({ page
   }
   await page.getByRole("menuitemradio", { name: /^Sample C / }).click();
   await expect(page.getByRole("button", { name: "Sample C: 9 to 11 Nov 2026" })).toBeVisible();
-  await expect(page.getByLabel("Air quality table")).toHaveValue(/^Timestamp\tMonitoring station/);
+  await expect(page.getByLabel("Air quality table")).toHaveValue(/^Station,From Date \(IST\),/);
   await expect(page.getByRole("button", { name: /Ward officer/ })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -183,7 +176,7 @@ test("reads an .xlsx workbook into the table box and writes a brief from it", as
   );
   await page.getByRole("button", { name: "Generate brief" }).click();
   await expect(
-    page.getByRole("heading", { name: /^Brief #\d+ for a ward officer$/ }),
+    page.getByRole("heading", { name: "Idgah Hills and TT Nagar, 4 Nov 2026" }),
   ).toBeVisible();
 });
 
@@ -211,23 +204,21 @@ test("reads a .csv file, including one saved in Windows-1252", async ({ page }) 
 test("writes a brief for sample A and links every figure to its source rows", async ({ page }) => {
   await generate(page, "A");
 
+  await expect(page.getByRole("heading", { name: "Bhopal, 3 to 5 Nov 2026" })).toBeVisible();
+  await expect(page.getByText(/^For a ward officer\. Period: 3 Nov 2026, 00:00/)).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /^Brief #\d+ for a ward officer$/ }),
-  ).toBeVisible();
-  await expect(page.getByText("Sample data. Station names are real")).toBeVisible();
-  await expect(
-    page.getByText(/^\d+ of 36 rows had a usable PM2\.5 reading\. \d+ rows have gaps/),
+    page.getByText(/^\d+ of 216 rows had a usable PM2\.5 reading\. \d+ rows have gaps/),
   ).toBeVisible();
 
   // Numbers come from code, so they are on screen before the model has written anything.
   await expect(
     section(page, "Stations and likely hotspot").getByRole("cell", {
-      name: "Idgah Hills Likely hotspot",
+      name: "Paryavaran Parisar Likely hotspot",
     }),
   ).toBeVisible();
   await expect(
     section(page, "What changed since the last brief").getByText(
-      /No earlier brief|Compared with brief #/,
+      /No earlier brief|Compared with the previous brief/,
     ),
   ).toBeVisible();
 
@@ -235,7 +226,7 @@ test("writes a brief for sample A and links every figure to its source rows", as
   await expect(actions.getByText("Inspect the station with the highest readings")).toBeVisible();
   await expect(actions.getByRole("listitem")).toHaveCount(3);
   // Placeholders the model puts in a title are filled in like everywhere else.
-  await expect(actions.getByText("Share the Very Poor advisory with residents")).toBeVisible();
+  await expect(actions.getByText("Share the Poor advisory with residents")).toBeVisible();
 
   const note = section(page, "Internal briefing note");
   await expect(note.getByText("Stub model summary.")).toBeVisible();
@@ -262,7 +253,7 @@ test("shows the advisory in English and Hindi at both reading levels", async ({ 
   const article = advisory.getByRole("article");
 
   await expect(article).toHaveAttribute("lang", "en");
-  await expect(article.getByRole("heading", { level: 4 })).toHaveText("Air quality is Very Poor");
+  await expect(article.getByRole("heading", { level: 4 })).toHaveText("Air quality is Poor");
   await expect(article.getByText("Cut down on hard exercise outside.")).toBeVisible();
   await expect(article.getByRole("button", { name: /Show the source rows/ })).toHaveCount(0);
 
@@ -271,28 +262,23 @@ test("shows the advisory in English and Hindi at both reading levels", async ({ 
 
   await advisory.getByRole("button", { name: "हिन्दी" }).click();
   await expect(article).toHaveAttribute("lang", "hi");
-  await expect(article.getByRole("heading", { level: 4 })).toHaveText("हवा की गुणवत्ता बहुत खराब है");
+  await expect(article.getByRole("heading", { level: 4 })).toHaveText("हवा की गुणवत्ता खराब है");
   await expect(advisory.getByText("Machine-translated. Have a Hindi speaker review")).toBeVisible();
 });
 
 test("compares a second brief with the one before it", async ({ page }) => {
   await generate(page, "A");
-  const first = await briefId(page);
   await expect(section(page, "Priority actions")).toBeVisible();
 
   await generate(page, "B", "Housing society");
-  await expect(
-    page.getByRole("heading", { name: `Brief #${first + 1} for a housing society` }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bhopal, 6 to 8 Nov 2026" })).toBeVisible();
+  await expect(page.getByText(/^For a housing society\./)).toBeVisible();
 
   const changed = section(page, "What changed since the last brief");
-  await expect(changed.getByText(`Compared with brief #${first} (Sample A`)).toBeVisible();
-  await expect(changed.getByRole("row", { name: /Idgah Hills.*too few readings/ })).toBeVisible();
-  await expect(page.getByText("mg/m³ (converted to µg/m³)")).toBeHidden(); // inside a closed disclosure
-  await page.getByText("How the columns were read").click();
   await expect(
-    page.getByText(/column 4: PM2\.5 \(mg\/m3\), unit mg\/m³ \(converted/),
+    changed.getByText("Compared with the previous brief: Bhopal, 3 to 5 Nov 2026 ("),
   ).toBeVisible();
+  await expect(changed.getByRole("row", { name: /^Paryavaran Parisar / })).toBeVisible();
 });
 
 test("explains a table it cannot use", async ({ page }) => {
@@ -317,7 +303,7 @@ test("falls back to code-written guidance when the model fails, then recovers on
   await expect(alert).toContainText("The statistics above are still correct");
   await expect(
     section(page, "Stations and likely hotspot").getByRole("cell", {
-      name: "Idgah Hills Likely hotspot",
+      name: "Paryavaran Parisar Likely hotspot",
     }),
   ).toBeVisible();
   await expect(
@@ -331,18 +317,22 @@ test("falls back to code-written guidance when the model fails, then recovers on
   await alert.getByRole("button", { name: "Try writing again" }).click();
 
   await expect(
-    section(page, "Priority actions").getByText("Share the Very Poor advisory with residents"),
+    section(page, "Priority actions").getByText("Share the Poor advisory with residents"),
   ).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("remembers the chosen theme", async ({ page }) => {
+test("follows the system theme until one is chosen, then remembers it", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.getByRole("button", { name: "Toggle theme" }).click();
-  await page.getByRole("menuitem", { name: "Light" }).click();
+  await expect(page.getByRole("menuitemradio", { name: "System" })).toBeChecked();
+  await page.getByRole("menuitemradio", { name: "Light" }).click();
   await expect(page.locator("html")).toHaveClass(/light/);
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/light/);
+  await page.getByRole("button", { name: "Toggle theme" }).click();
+  await expect(page.getByRole("menuitemradio", { name: "Light" })).toBeChecked();
 });
 
 test("keeps API and page routes apart on one origin", async ({ page, request }) => {

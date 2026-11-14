@@ -111,6 +111,17 @@ One-time setup:
 
 To deploy from your own machine instead: `pnpm --filter server exec wrangler login`, then `pnpm run deploy`.
 
+### Access
+
+Vayu is one shared workspace: every brief is visible to everyone who can open the app, and "what changed" compares against the team's latest brief. So the deployed app must sit behind Cloudflare Access (free for up to 50 users). Without it, anyone with the `workers.dev` address can read every pasted table.
+
+1. In the Cloudflare dashboard, open Workers & Pages > `project-vayu` > Settings > Domains & Routes, and turn on Cloudflare Access for the `workers.dev` route.
+2. In Zero Trust > Access > Applications, open the application that step 1 created. Set its policy to the people who should use Vayu, and copy its Application Audience (AUD) tag.
+3. In Zero Trust > Settings, copy the team domain (`<team>.cloudflareaccess.com`).
+4. In the GitHub repository, under Settings > Secrets and variables > Actions > Variables, add `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` with those values, then deploy again.
+
+With both variables set, the Worker also checks the signed Access token on every `/api` request except `/api/health`, so a route that skips Access is refused. Each signed-in user may make 20 brief requests a minute.
+
 ## Git Hooks and Formatting
 
 - Run checks: `pnpm run check`

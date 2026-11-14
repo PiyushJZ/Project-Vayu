@@ -158,8 +158,30 @@
   b {
     font-weight: 600;
   }
-  summary {
+  /* Preflight resets buttons to the arrow, so every control gets its pointer back here, once. */
+  a[href],
+  button,
+  summary,
+  select,
+  label[for],
+  label:has(> input[type="checkbox"], > input[type="radio"]),
+  [role="button"],
+  [role="link"],
+  [role="tab"],
+  [role="switch"],
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"] {
     cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
   }
   summary::-webkit-details-marker {
     display: none;

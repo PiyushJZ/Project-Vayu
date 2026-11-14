@@ -2,7 +2,7 @@
 
 ## System Overview
 
-`server` is the HTTP backend of project-vayu: a Cloudflare Worker written with Hono (ESM, TypeScript). The same Worker also serves the built web app from `../web/dist`, so the whole product is one deployment on one origin. It has no source files directly in this directory; all code lives under `src/`. `wrangler.jsonc` holds the Worker's configuration: entry `src/index.ts`, the `nodejs_compat` flag, static assets with single-page-app fallback and `/api/*` routed to the Worker first, the D1 binding `DB` (database `project-vayu`), and the `vars` `OPENROUTER_MODEL` and `OPENROUTER_BASE_URL`. Scripts in `package.json`: `dev` (`wrangler dev` on port 8080), `build` (`wrangler deploy --dry-run --outdir dist`, bundles without uploading), `deploy` (`wrangler deploy`), `check-types`, `test` (`tsx --test "src/**/*.test.ts"`).
+`server` is the HTTP backend of project-vayu: a Cloudflare Worker written with Hono (ESM, TypeScript). The same Worker also serves the built web app from `../web/dist`, so the whole product is one deployment on one origin. It has no source files directly in this directory; all code lives under `src/`. `wrangler.jsonc` holds the Worker's configuration: entry `src/index.ts`, the `nodejs_compat` flag, static assets with single-page-app fallback and `/api/*` routed to the Worker first, the D1 binding `DB` (database `project-vayu`), the rate limit binding `BRIEF_RATE_LIMIT` (20 requests a minute per key), and the `vars` `OPENROUTER_MODEL` and `OPENROUTER_BASE_URL`. `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are passed by the deploy workflow. Scripts in `package.json`: `dev` (`wrangler dev` on port 8080), `build` (`wrangler deploy --dry-run --outdir dist`, bundles without uploading), `deploy` (`wrangler deploy`), `check-types`, `test` (`tsx --test "src/**/*.test.ts"`).
 
 ## Subdirectories & System Boundaries
 
@@ -22,6 +22,7 @@
 - `wrangler dev` listens on port 8080 and keeps the local D1 database under `.wrangler/state`.
 - Reads and writes the D1 database bound as `DB`.
 - Calls the OpenRouter API (`src/brief/llm.ts`) at `OPENROUTER_BASE_URL`.
+- Fetches Cloudflare Access signing keys from `https://<ACCESS_TEAM_DOMAIN>/cdn-cgi/access/certs` (cached for an hour) when Access is configured.
 - Logs one evlog wide event per request, and one `llm_call` line per model attempt, to the console (Workers Logs in production, where `observability` is enabled).
 
 ## System Verification
