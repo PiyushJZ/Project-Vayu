@@ -18,6 +18,21 @@ export function resolveText(
   );
 }
 
+/** The small finding id beside a figure. Selecting it opens that finding's source rows. */
+export function CiteChip({ id, onCite }: { id: string; onCite: (id: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onCite(id)}
+      aria-label={`Show the source rows for ${id}`}
+      // The ::after widens the tap area without moving the text around the chip.
+      className="relative inline-flex h-[1.375rem] items-center rounded-[6px] border border-border-strong px-1.5 align-[0.08em] font-mono text-[0.8125rem] leading-none font-normal text-muted-foreground transition-colors duration-[120ms] ease-ui after:absolute after:-inset-x-1 after:-inset-y-2.5 hover:border-primary hover:text-foreground hover:duration-150"
+    >
+      {id}
+    </button>
+  );
+}
+
 /** Replaces {Fn} and {BAND} with the text code computed, and links each figure to its source rows. */
 export function Rich({
   text,
@@ -42,15 +57,7 @@ export function Rich({
         if (!f) return null;
         return (
           <span key={i}>
-            {f.display}
-            <button
-              type="button"
-              onClick={() => onCite(f.id)}
-              aria-label={`Show the source rows for ${f.id}`}
-              className="ml-0.5 align-super text-[10px] leading-none text-primary underline underline-offset-2 hover:no-underline"
-            >
-              {f.id}
-            </button>
+            <span className="font-medium">{f.display}</span> <CiteChip id={f.id} onCite={onCite} />
           </span>
         );
       })}

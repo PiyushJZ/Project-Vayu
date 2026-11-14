@@ -41,9 +41,15 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
+        <div className="flex min-h-svh flex-col">
           <Header />
-          <Outlet />
+          <main id="main" className="flex flex-1 flex-col pt-(--nav)">
+            <Outlet />
+          </main>
+          <footer className="wrap flex flex-col gap-x-8 gap-y-1 border-t py-6 t-small text-muted-foreground lg:flex-row lg:justify-between">
+            <p>Bands follow the CPCB National Air Quality Index for PM2.5.</p>
+            <p>A brief does not replace official CPCB or SAFAR bulletins or medical advice.</p>
+          </footer>
         </div>
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

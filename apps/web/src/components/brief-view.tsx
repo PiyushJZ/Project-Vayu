@@ -1,4 +1,5 @@
 import { Button } from "@project-vayu/ui/components/button";
+import { Card, CardContent } from "@project-vayu/ui/components/card";
 import { Skeleton } from "@project-vayu/ui/components/skeleton";
 import { useCallback, useState } from "react";
 
@@ -7,7 +8,8 @@ import type { Brief } from "../../../server/src/brief/types";
 import {
   ActionsView,
   AdvisoryView,
-  BandChip,
+  BandScale,
+  Callout,
   ComparisonView,
   CopyButton,
   DataIssues,
@@ -29,6 +31,7 @@ export function BriefView({
   onRetryWrite: () => void;
 }) {
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [citedId, setCitedId] = useState<string | null>(null);
 
   const setOpen = useCallback((id: string, open: boolean) => {
     setOpenIds((prev) => {
@@ -43,6 +46,7 @@ export function BriefView({
   const cite = useCallback(
     (id: string) => {
       setOpen(id, true);
+      setCitedId(id);
       requestAnimationFrame(() =>
         document.getElementById(`finding-${id}`)?.scrollIntoView({ block: "center" }),
       );
@@ -54,30 +58,31 @@ export function BriefView({
   const c = brief.coverage;
 
   return (
-    <div className="grid gap-4" aria-live="polite">
-      <header className="grid gap-2 border p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-medium">
-            Brief #{brief.id} for a {AUDIENCE_LABEL[brief.audience].toLowerCase()}
-          </h2>
-          <BandChip band={brief.band} />
+    <div className="wrap grid grid-cols-1 gap-14 pt-6 pb-20 lg:gap-20 lg:pb-28" aria-live="polite">
+      <header className="grid grid-cols-1 gap-6">
+        <div className="grid gap-x-6 gap-y-6 xl:grid-cols-12">
+          <div className="grid content-start gap-4 xl:col-span-5">
+            <h2 className="t-h2">
+              Brief #{brief.id} for a {AUDIENCE_LABEL[brief.audience].toLowerCase()}
+            </h2>
+            <p className="text-muted-foreground">
+              {brief.label}. Period: {brief.period}.
+            </p>
+            <p>
+              {c.validPm25} of {c.totalRows} rows had a usable PM2.5 reading. {c.gapRows} rows have
+              gaps and {c.suspectRows} rows have readings that were excluded as unreliable.
+            </p>
+            {brief.sample && (
+              <Callout role="note" className="t-small font-medium">
+                Sample data. Station names are real Bhopal CPCB stations, but every reading is
+                invented.
+              </Callout>
+            )}
+          </div>
+          <div className="xl:col-span-6 xl:col-start-7">
+            <BandScale brief={brief} />
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {brief.label}. Period: {brief.period}.
-        </p>
-        {brief.sample && (
-          <p
-            role="note"
-            className="border border-yellow-600/60 bg-yellow-500/10 p-2 text-sm font-medium"
-          >
-            Sample data. Station names are real Bhopal CPCB stations, but every reading is invented.
-          </p>
-        )}
-        <p className="text-sm">
-          {c.validPm25} of {c.totalRows} rows had a usable PM2.5 reading. {c.gapRows} rows have gaps
-          and {c.suspectRows} rows have readings that were excluded as unreliable.
-        </p>
-        <p className="text-xs text-muted-foreground">Band source: {brief.bandBasis}</p>
         <MappingView brief={brief} />
       </header>
 
@@ -104,20 +109,19 @@ export function BriefView({
           title="Writing the brief"
           description="The statistics above are final. The model is now writing the actions, the briefing note and the advisory in English and Hindi. This can take a minute or two."
         >
-          <div className="grid gap-2" role="status" aria-label="Writing the brief">
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
+          <Card>
+            <CardContent className="grid gap-3" role="status" aria-label="Writing the brief">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+            </CardContent>
+          </Card>
         </Section>
       )}
 
       {!writing && brief.writeError && (
-        <div
-          role="alert"
-          className="grid gap-2 border border-destructive/60 bg-destructive/10 p-3 text-sm"
-        >
-          <p>
+        <Callout tone="error" role="alert" className="grid gap-3">
+          <p className="measure">
             The model could not write this brief ({brief.writeError}). The statistics above are
             still correct. Fixed English guidance is shown below.
           </p>
@@ -126,12 +130,12 @@ export function BriefView({
               Try writing again
             </Button>
           </div>
-        </div>
+        </Callout>
       )}
 
       {written && written.warnings.length > 0 && !brief.writeError && (
-        <details className="border border-orange-600/60 bg-orange-500/10 p-3 text-sm">
-          <summary className="cursor-pointer font-medium">
+        <details className="group rounded-lg border border-caution/45 bg-caution/10 px-4 py-3">
+          <summary className="flex list-none items-center gap-3 font-medium">
             {written.warnings.length} part{written.warnings.length === 1 ? "" : "s"} of the model's
             text failed a check and were replaced
           </summary>
@@ -173,7 +177,7 @@ export function BriefView({
         title="Findings and their source rows"
         description="Select a finding to see the exact rows of your table it was computed from. Figures in the text above link here."
       >
-        <FindingsList brief={brief} openIds={openIds} setOpen={setOpen} />
+        <FindingsList brief={brief} openIds={openIds} setOpen={setOpen} citedId={citedId} />
       </Section>
     </div>
   );

@@ -1,10 +1,12 @@
 import { Button } from "@project-vayu/ui/components/button";
 import { Textarea } from "@project-vayu/ui/components/textarea";
 import { createFileRoute } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AUDIENCE_LABEL } from "../../../server/src/brief/bands";
 import { AUDIENCES, type Audience, type Brief } from "../../../server/src/brief/types";
+import { Callout } from "@/components/brief-parts";
 import { BriefView } from "@/components/brief-view";
 import { api, type SampleTable } from "@/lib/api";
 
@@ -67,39 +69,56 @@ function HomeComponent() {
   const busy = phase !== "idle";
 
   return (
-    <div className="container mx-auto grid max-w-5xl gap-6 px-4 py-6">
-      <section className="grid gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Civic Air Quality Briefing Studio</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Paste a table of air quality readings, even a messy one. Code works out the averages,
-            gaps and hotspots and links each finding to its rows. The model then writes the actions,
-            a briefing note and a citizen advisory in English and Hindi.
-          </p>
+    <>
+      <section
+        aria-labelledby="studio-title"
+        className={`wrap grid content-start gap-x-6 gap-y-10 pt-10 pb-12 sm:pt-12 lg:grid-cols-12 lg:pb-16 ${
+          // With a brief on the page the studio keeps the first screen, so the brief starts on a screen of its own.
+          brief ? "lg:min-h-[calc(100svh-var(--nav))]" : "flex-1"
+        }`}
+      >
+        <div className="grid content-start gap-8 lg:col-span-6 xl:col-span-5">
+          <div className="grid gap-5">
+            <h1 id="studio-title" className="enter-rise t-h1">
+              Civic Air Quality Briefing Studio
+            </h1>
+            <p className="enter-rise measure t-lead [--enter-step:1]">
+              Paste a table of air quality readings, even a messy one. Code works out the averages,
+              gaps and hotspots and links each finding to its rows. The model then writes the
+              actions, a briefing note and a citizen advisory in English and Hindi.
+            </p>
+          </div>
+
+          <fieldset className="enter-rise [--enter-step:2]">
+            <legend className="mb-3 t-label">Who is asking?</legend>
+            <div className="grid gap-2 sm:max-lg:grid-cols-3">
+              {AUDIENCES.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-pressed={audience === a}
+                  onClick={() => setAudience(a)}
+                  disabled={busy}
+                  className="group grid grid-cols-[auto_1fr] items-start gap-x-3 rounded-lg border border-border-strong px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-[120ms] ease-ui hover:border-[color-mix(in_oklab,var(--foreground)_36%,transparent)] hover:bg-accent hover:duration-150 disabled:pointer-events-none disabled:opacity-60 aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:shadow-[inset_0_0_0_1px_var(--primary)]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 grid size-4 place-items-center rounded-full border border-border-strong group-aria-pressed:border-primary"
+                  >
+                    <span className="size-2 scale-0 rounded-full bg-primary transition-[scale] duration-150 ease-ui group-aria-pressed:scale-100 motion-reduce:transition-none" />
+                  </span>
+                  <span className="grid gap-0.5">
+                    <span className="font-medium">{AUDIENCE_LABEL[a]}</span>
+                    <span className="t-small text-muted-foreground">{AUDIENCE_HELP[a]}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
         </div>
 
-        <fieldset className="grid gap-2">
-          <legend className="mb-1 text-sm font-medium">Who is asking?</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {AUDIENCES.map((a) => (
-              <Button
-                key={a}
-                type="button"
-                variant={audience === a ? "default" : "outline"}
-                aria-pressed={audience === a}
-                onClick={() => setAudience(a)}
-                disabled={busy}
-                className="h-auto flex-col items-start gap-0.5 whitespace-normal px-3 py-2 text-left"
-              >
-                <span className="text-sm font-medium">{AUDIENCE_LABEL[a]}</span>
-                <span className="text-xs font-normal opacity-80">{AUDIENCE_HELP[a]}</span>
-              </Button>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="grid gap-2">
-          <label htmlFor="table" className="text-sm font-medium">
+        <div className="enter-settle grid min-w-0 content-start gap-4 rounded-xl border bg-card p-4 sm:p-6 lg:col-span-6 xl:col-start-7">
+          <label htmlFor="table" className="t-label">
             Air quality table
           </label>
           <Textarea
@@ -108,52 +127,72 @@ function HomeComponent() {
             onChange={(e) => setText(e.target.value)}
             disabled={busy}
             rows={10}
+            wrap="off"
             spellCheck={false}
             placeholder="Paste CSV, tab-separated or semicolon-separated rows with a header line. The columns can be in any order."
-            className="max-h-80 min-h-40 overflow-auto font-mono"
+            className="h-56 overflow-auto lg:h-[clamp(13rem,38svh,24rem)] font-mono text-[0.8125rem]/[1.7] placeholder:font-sans placeholder:text-base placeholder:whitespace-normal"
           />
-          <div className="flex flex-wrap items-center gap-2">
-            {samples.map((s) => (
-              <Button
-                key={s.id}
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => setText(s.text)}
-              >
-                Load {s.label}
-              </Button>
-            ))}
-            <span className="text-xs text-muted-foreground">
+          <div className="grid gap-3">
+            <div className="flex flex-wrap gap-2">
+              {samples.map((s) => (
+                <Button
+                  key={s.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setText(s.text)}
+                  className="max-sm:h-auto max-sm:min-h-11 max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                >
+                  Load {s.label}
+                </Button>
+              ))}
+            </div>
+            <p className="t-small text-muted-foreground">
               Sample tables use real Bhopal CPCB station names with invented readings. Run A, then
               B, to see what changed.
+            </p>
+          </div>
+
+          {error && (
+            <Callout tone="error" role="alert">
+              {error}
+            </Callout>
+          )}
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2">
+            <Button
+              type="button"
+              size="lg"
+              onClick={generate}
+              disabled={busy || text.trim() === ""}
+              className="max-sm:w-full"
+            >
+              {busy && <Loader2 aria-hidden="true" className="animate-spin" />}
+              {phase === "analysing"
+                ? "Reading the table…"
+                : phase === "writing"
+                  ? "Writing the brief…"
+                  : "Generate brief"}
+              {!busy && (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 12 12"
+                  className="size-3! fill-none stroke-current stroke-[1.6] transition-[translate] duration-[120ms] ease-ui [stroke-linecap:round] [stroke-linejoin:round] group-hover/button:translate-x-[3px] group-hover/button:duration-150 motion-reduce:translate-none!"
+                >
+                  <path d="M1.5 6h8.5M6.5 2.5 10 6l-3.5 3.5" />
+                </svg>
+              )}
+            </Button>
+            <span role="status" className="t-small text-muted-foreground">
+              {phase === "analysing" && "Matching columns and computing statistics."}
+              {phase === "writing" && "Statistics are ready below. The model is writing the text."}
             </span>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" size="lg" onClick={generate} disabled={busy || text.trim() === ""}>
-            {phase === "analysing"
-              ? "Reading the table..."
-              : phase === "writing"
-                ? "Writing the brief..."
-                : "Generate brief"}
-          </Button>
-          <span role="status" className="text-sm text-muted-foreground">
-            {phase === "analysing" && "Matching columns and computing statistics."}
-            {phase === "writing" && "Statistics are ready below. The model is writing the text."}
-          </span>
-        </div>
-
-        {error && (
-          <p role="alert" className="border border-destructive/60 bg-destructive/10 p-3 text-sm">
-            {error}
-          </p>
-        )}
       </section>
 
-      <div ref={resultRef} className="scroll-mt-4">
+      <div ref={resultRef}>
         {brief && (
           <BriefView
             brief={brief}
@@ -162,6 +201,6 @@ function HomeComponent() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 }
