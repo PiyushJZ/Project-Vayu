@@ -1,5 +1,3 @@
-import { ENV } from "@/env";
-
 import type { Audience, Brief } from "../../../server/src/brief/types";
 
 export interface SampleTable {
@@ -8,7 +6,8 @@ export interface SampleTable {
   text: string;
 }
 
-const base = ENV.VITE_SERVER_URL.replace(/\/$/, "");
+/** The API shares the page's origin: the Worker serves both in production, and Vite proxies /api in development. */
+const base = "/api";
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
   let res: Response;
@@ -19,7 +18,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new Error(`Could not reach the server at ${base}. Is it running?`);
+    throw new Error("Could not reach the server. Check your connection and try again.");
   }
   const json = (await res.json().catch(() => null)) as
     | { error?: string; message?: string }

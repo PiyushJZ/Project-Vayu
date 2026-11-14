@@ -77,7 +77,7 @@ export function BriefView({
           {c.validPm25} of {c.totalRows} rows had a usable PM2.5 reading. {c.gapRows} rows have gaps
           and {c.suspectRows} rows have readings that were excluded as unreliable.
         </p>
-        <p className="text-xs text-muted-foreground">Band source: {brief.bandBasis}.</p>
+        <p className="text-xs text-muted-foreground">Band source: {brief.bandBasis}</p>
         <MappingView brief={brief} />
       </header>
 

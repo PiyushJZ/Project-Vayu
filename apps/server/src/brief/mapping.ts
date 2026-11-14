@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { chatJson } from "./llm";
+import { type LlmConfig, chatJson } from "./llm";
 import { type ParsedTable, guessMapping } from "./table";
 import type { ColumnMapping } from "./types";
 
@@ -56,10 +56,14 @@ function valid(m: z.infer<typeof MappingReply>, width: number): string | null {
   return null;
 }
 
-export async function mapColumns(table: ParsedTable): Promise<ColumnMapping | null> {
+export async function mapColumns(
+  table: ParsedTable,
+  llm: LlmConfig,
+): Promise<ColumnMapping | null> {
   let warning: string;
   try {
     const m = await chatJson({
+      llm,
       purpose: "mapping",
       system: SYSTEM,
       user: userPrompt(table),

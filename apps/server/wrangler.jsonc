@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "project-vayu",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  // evlog keeps the request logger in AsyncLocalStorage.
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The built web app. Requests under /api go to the Worker; every other path is a file or the SPA's index.html.
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+
+  // No database_id: `wrangler deploy` finds the database by name and creates it on the first deploy.
+  "d1_databases": [{ "binding": "DB", "database_name": "project-vayu" }],
+
+  // OPENROUTER_API_KEY is a secret: `apps/server/.env` locally, `wrangler secret put` or the deploy workflow in production.
+  "vars": {
+    // openrouter/auto can pick a different model on each call. Set a fixed slug for predictable speed and quality.
+    "OPENROUTER_MODEL": "openrouter/auto",
+    "OPENROUTER_BASE_URL": "https://openrouter.ai/api/v1",
+  },
+
+  "observability": { "enabled": true },
+  "dev": { "port": 8080 },
+}

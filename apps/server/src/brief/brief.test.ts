@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, it } from "node:test";
 
+import { z } from "zod";
+
 import { analyze } from "./analyze";
+import { chatJson } from "./llm";
 import { createBrief, writeForBrief } from "./pipeline";
 import { SAMPLES } from "./samples";
 import { guessMapping, parseNumber, parseTable, parseTimestamp } from "./table";
 import { checkText } from "./write";
-import { openStore } from "../store";
+import type { Services } from "../services";
+import { type SqlDatabase, type SqlStatement, openStore } from "../store";
 
 const sampleA = SAMPLES[0]!.text;
 const sampleB = SAMPLES[1]!.text;
@@ -98,26 +103,44 @@ describe("analysis of sample A", () => {
   });
 });
 
+/** An in-memory SQLite database behind the same calls the store makes on Cloudflare D1. */
+function memoryDatabase(): SqlDatabase & { close(): void } {
+  const db = new DatabaseSync(":memory:");
+  const statement = (sql: string, values: unknown[]): SqlStatement => ({
+    bind: (...next) => statement(sql, next),
+    run: async () => db.prepare(sql).run(...(values as never[])),
+    first: async <T>() => (db.prepare(sql).get(...(values as never[])) ?? null) as T | null,
+  });
+  return { prepare: (sql) => statement(sql, []), close: () => db.close() };
+}
+
 describe("pipeline with an in-memory store", () => {
-  const stores: ReturnType<typeof openStore>[] = [];
-  const fresh = () => {
-    const s = openStore(":memory:");
-    stores.push(s);
-    return s;
+  const databases: ReturnType<typeof memoryDatabase>[] = [];
+  const fresh = (): Services => {
+    const db = memoryDatabase();
+    databases.push(db);
+    return {
+      store: openStore(db),
+      llm: { apiKey: "test-key", model: "test/model", baseUrl: "https://openrouter.test/api/v1" },
+    };
   };
   const realFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = realFetch;
-    while (stores.length) stores.pop()!.close();
+    while (databases.length) databases.pop()!.close();
   });
 
   it("compares sample B with sample A and handles mg/m3 and a station with too few readings", async () => {
-    const store = fresh();
-    const first = await createBrief(store, { text: sampleA, audience: "ward_officer" }, heuristic);
+    const services = fresh();
+    const first = await createBrief(
+      services,
+      { text: sampleA, audience: "ward_officer" },
+      heuristic,
+    );
     assert.equal(first.comparison, null);
     assert.equal(first.sample, "A");
 
-    const second = await createBrief(store, { text: sampleB, audience: "school" }, heuristic);
+    const second = await createBrief(services, { text: sampleB, audience: "school" }, heuristic);
     assert.equal(second.sample, "B");
     assert.equal(second.mapping.pm25Unit, "mg/m3");
     const idgah = second.stations.find((s) => s.name === "Idgah Hills")!;
@@ -146,10 +169,14 @@ describe("pipeline with an in-memory store", () => {
     assert.ok(
       second.findings.some((f) => f.kind === "change_hotspot" && f.prevBriefId === first.id),
     );
+    const stored = (await services.store.get(second.id))!;
+    assert.equal(stored.id, second.id);
     assert.deepEqual(
-      store.get(second.id)!.findings.map((f) => f.id),
+      stored.findings.map((f) => f.id),
       second.findings.map((f) => f.id),
     );
+    assert.equal((await services.store.latest())!.id, second.id);
+    assert.equal(await services.store.get(999), null);
   });
 
   it("rejects a table with no PM2.5 column", async () => {
@@ -160,9 +187,9 @@ describe("pipeline with an in-memory store", () => {
   });
 
   it("keeps model text that passes every check and replaces text that does not", async () => {
-    const store = fresh();
+    const services = fresh();
     const brief = await createBrief(
-      store,
+      services,
       { text: sampleA, audience: "housing_society" },
       heuristic,
     );
@@ -230,17 +257,22 @@ describe("pipeline with an in-memory store", () => {
         },
       },
     };
-    globalThis.fetch = (async () =>
-      new Response(
+    let requested = "";
+    globalThis.fetch = (async (url: string) => {
+      requested = url;
+      return new Response(
         JSON.stringify({
           choices: [{ message: { content: "```json\n" + JSON.stringify(reply) + "\n```" } }],
         }),
         {
           status: 200,
         },
-      )) as typeof fetch;
+      );
+    }) as typeof fetch;
 
-    const done = await writeForBrief(store, brief.id);
+    const done = await writeForBrief(services, brief.id);
+    assert.equal(requested, "https://openrouter.test/api/v1/chat/completions");
+    assert.equal(done.written!.model, "test/model");
     const w = done.written!;
     assert.equal(done.status, "fallback");
     assert.equal(w.actionsSource, "model");
@@ -259,19 +291,76 @@ describe("pipeline with an in-memory store", () => {
     assert.equal(w.advisory.hi.simple.source, "fixed", "Hindi text with a digit is replaced");
     assert.match(w.advisory.hi.simple.warning!, /failed an automatic check/);
     assert.equal(w.advisory.hi.standard.source, "model");
-    assert.equal(store.get(brief.id)!.written!.advisory.hi.simple.source, "fixed");
+    const stored = (await services.store.get(brief.id))!;
+    assert.equal(stored.written!.advisory.hi.simple.source, "fixed");
   });
 
   it("falls back to labelled code text when the model call fails", async () => {
-    const store = fresh();
-    const brief = await createBrief(store, { text: sampleA, audience: "school" }, heuristic);
+    const services = fresh();
+    const brief = await createBrief(services, { text: sampleA, audience: "school" }, heuristic);
     globalThis.fetch = (async () => new Response("nope", { status: 401 })) as typeof fetch;
-    const done = await writeForBrief(store, brief.id);
+    const done = await writeForBrief(services, brief.id);
     assert.equal(done.status, "fallback");
     assert.match(done.writeError!, /401/);
     assert.equal(done.written!.actionsSource, "template");
     assert.equal(done.written!.advisory.hi.simple.source, "fixed");
     assert.ok(done.written!.actions.length >= 2);
+  });
+
+  it("uses header matching and fixed text, without calling out, when no API key is set", async () => {
+    const base = fresh();
+    const services: Services = { ...base, llm: { ...base.llm, apiKey: undefined } };
+    globalThis.fetch = (async () => {
+      throw new Error("the model must not be called without a key");
+    }) as typeof fetch;
+    const brief = await createBrief(services, { text: sampleA, audience: "school" });
+    assert.equal(brief.mapping.source, "heuristic");
+    assert.match(brief.mapping.warning!, /OPENROUTER_API_KEY is not set/);
+    const done = await writeForBrief(services, brief.id);
+    assert.equal(done.status, "fallback");
+    assert.match(done.writeError!, /OPENROUTER_API_KEY is not set/);
+  });
+
+  it("reports a missing brief as a 404 the user can read", async () => {
+    await assert.rejects(writeForBrief(fresh(), 42), {
+      message: "No brief with id 42.",
+      statusCode: 404,
+    });
+  });
+});
+
+describe("chatJson", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it("reports a reply that stalls after its headers as a timeout, and does not retry it", async () => {
+    let calls = 0;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      calls++;
+      const signal = init.signal!;
+      // Headers arrive at once; the body never does, and breaks off when the deadline passes.
+      const body = new ReadableStream({
+        start: (controller) =>
+          signal.addEventListener("abort", () => controller.error(signal.reason)),
+      });
+      return new Response(body, { status: 200 });
+    }) as typeof fetch;
+
+    await assert.rejects(
+      chatJson({
+        llm: { apiKey: "test-key", model: "test/model", baseUrl: "https://openrouter.test/api/v1" },
+        purpose: "test",
+        system: "s",
+        user: "u",
+        schema: z.object({}),
+        timeoutMs: 30,
+        maxTokens: 10,
+      }),
+      /no reply within 0 seconds/,
+    );
+    assert.equal(calls, 1);
   });
 });
 

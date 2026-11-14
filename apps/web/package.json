@@ -8,19 +8,16 @@
     "build": "vite build",
     "serve": "vite preview",
     "start": "vite",
-    "check-types": "vite build && tsc --noEmit",
-    "env:generate": "varlock codegen"
+    "check-types": "vite build && tsc --noEmit"
   },
   "dependencies": {
     "@project-vayu/ui": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.44",
-    "@varlock/vite-integration": "1.5.4",
     "lucide-react": "^1.56.0",
     "next-themes": "catalog:",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "varlock": "catalog:"
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@project-vayu/config": "workspace:*",

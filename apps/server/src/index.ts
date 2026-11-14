@@ -1,43 +1,31 @@
-import fastifyCors from "@fastify/cors";
 import { initLogger } from "evlog";
-import { evlog } from "evlog/fastify";
-import { createFsDrain } from "evlog/fs";
-import Fastify from "fastify";
+import { type EvlogVariables, evlog } from "evlog/hono";
+import { Hono } from "hono";
 
-import { ENV } from "./env.server";
+import { UserError } from "./brief/pipeline";
 import { briefRoutes } from "./routes/briefs";
-
-const baseCorsConfig = {
-  origin: ENV.CORS_ORIGIN,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true,
-  maxAge: 86400,
-};
+import type { Env } from "./services";
 
 initLogger({
   env: { service: "project-vayu-server" },
 });
 
-const fastify = Fastify({
-  logger: true,
-});
+/** Everything is under /api, so one Worker can serve the web app's files on every other path. */
+const app = new Hono<{ Bindings: Env } & EvlogVariables>().basePath("/api");
 
-fastify.register(evlog, {
-  drain: process.env.NODE_ENV === "production" ? undefined : createFsDrain(),
-});
-fastify.register(fastifyCors, baseCorsConfig);
+app.use(evlog());
 
-fastify.register(briefRoutes);
+app.get("/health", (c) => c.text("OK"));
+app.route("/", briefRoutes);
 
-fastify.get("/", async () => {
-  return "OK";
-});
+app.notFound((c) => c.json({ error: `No API route for ${c.req.method} ${c.req.path}.` }, 404));
 
-fastify.listen({ port: 8080 }, (err) => {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
+app.onError((err, c) => {
+  if (err instanceof UserError) {
+    return c.json({ error: err.message }, err.statusCode);
   }
-  console.log("Server running on port 8080");
+  c.get("log").error(err);
+  return c.json({ error: "The server hit an unexpected problem. Try again." }, 500);
 });
+
+export default app;

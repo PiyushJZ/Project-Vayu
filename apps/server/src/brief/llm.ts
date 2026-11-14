@@ -1,8 +1,13 @@
 import { z } from "zod";
 
-import { ENV } from "../env.server";
-
-const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+/** Where and how to reach the model. Passed in by the caller, so this module reads no environment. */
+export interface LlmConfig {
+  /** Unset when the server has no key. Every call then fails and the caller's fallback is used. */
+  apiKey: string | undefined;
+  model: string;
+  /** OpenRouter-compatible API root, without a trailing slash. */
+  baseUrl: string;
+}
 
 class LlmError extends Error {
   constructor(
@@ -32,35 +37,38 @@ interface Reply {
 }
 
 async function callOnce(
+  llm: LlmConfig,
   messages: { role: "system" | "user"; content: string }[],
   timeoutMs: number,
   maxTokens: number,
 ): Promise<Reply> {
+  if (!llm.apiKey) throw new LlmError("OPENROUTER_API_KEY is not set on the server", false);
+  // One deadline for the whole call. OpenRouter sends its headers early and the reply later,
+  // so the deadline can pass while the body is still being read.
+  const signal = AbortSignal.timeout(timeoutMs);
+  const noReply = () =>
+    new LlmError(`no reply within ${Math.round(timeoutMs / 1000)} seconds`, false);
   let res: Response;
   try {
-    res = await fetch(ENDPOINT, {
+    res = await fetch(`${llm.baseUrl}/chat/completions`, {
       method: "POST",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
       headers: {
-        Authorization: `Bearer ${ENV.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${llm.apiKey}`,
         "Content-Type": "application/json",
         "X-Title": "Civic Air Quality Briefing Studio",
       },
       body: JSON.stringify({
-        model: ENV.OPENROUTER_MODEL,
+        model: llm.model,
         messages,
         temperature: 0.2,
         max_tokens: maxTokens,
       }),
     });
   } catch (e) {
-    const timedOut = (e as Error).name === "TimeoutError";
-    throw new LlmError(
-      timedOut
-        ? `no reply within ${Math.round(timeoutMs / 1000)} seconds`
-        : `network error: ${(e as Error).message}`,
-      false,
-    );
+    throw signal.aborted
+      ? noReply()
+      : new LlmError(`network error: ${(e as Error).message}`, false);
   }
   if (!res.ok) {
     const body = (await res.text().catch(() => "")).slice(0, 200);
@@ -69,7 +77,10 @@ async function callOnce(
       res.status >= 500,
     );
   }
-  const json = (await res.json().catch(() => null)) as {
+  const json = (await res.json().catch(() => {
+    if (signal.aborted) throw noReply();
+    return null;
+  })) as {
     choices?: { message?: { content?: string | null }; finish_reason?: string }[];
     error?: { message?: string };
     model?: string;
@@ -107,6 +118,7 @@ function log(
 
 /** Asks for one JSON object and validates it. Retries once when the reply is malformed or the provider fails with a 5xx. */
 export async function chatJson<T>(opts: {
+  llm: LlmConfig;
   purpose: string;
   system: string;
   user: string;
@@ -120,6 +132,7 @@ export async function chatJson<T>(opts: {
     const started = Date.now();
     try {
       const reply = await callOnce(
+        opts.llm,
         [
           { role: "system", content: opts.system },
           { role: "user", content: user },

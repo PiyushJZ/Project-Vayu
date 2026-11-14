@@ -1,6 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { varlockVitePlugin } from "@varlock/vite-integration";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -8,12 +7,15 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
+    // The API is a Cloudflare Worker run by `wrangler dev` in apps/server.
+    proxy: {
+      "/api": "http://localhost:8080",
+    },
   },
   resolve: {
     tsconfigPaths: true,
   },
   plugins: [
-    varlockVitePlugin({ ssrInjectMode: "auto-load" }),
     tailwindcss(),
     tanstackRouter({
       target: "react",

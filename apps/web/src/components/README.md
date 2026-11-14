@@ -1,9 +1,11 @@
 # components
 
 ## Overview
+
 React UI components for the web app: app chrome (header, theme toggle, loader) and the rendering of a generated air quality `Brief`. Brief and band types and constants are imported from `../../../server/src/brief/{types,bands}` (outside this package).
 
 ## Interface
+
 - `brief-view.tsx`: `BriefView({ brief, writing, onRetryWrite })` renders the full brief. It keeps `openIds` state (open finding ids) and a `cite(id)` callback that opens a finding and scrolls to `#finding-<id>`.
 - `brief-parts.tsx`: `BandChip`, `Section`, `CopyButton`, `MappingView`, `StationsTable`, `DataIssues`, `ComparisonView`, `ActionsView`, `NoteView`, `AdvisoryView`, `FindingsList`, and `noteText(brief, written)`. Used by `BriefView`.
 - `rich-text.tsx`: `type Lang = "en" | "hi"`; `Rich({ text, findings, band, lang, onCite })` replaces `{F<n>}` and `{BAND}` tokens with `Finding.display` or `BANDS[band][lang]` and renders each finding token with a citation button; `resolveText(text, findings, band, lang)` returns the plain-text version (unknown finding ids resolve to `""`).
@@ -13,15 +15,22 @@ React UI components for the web app: app chrome (header, theme toggle, loader) a
 - `loader.tsx`: default export `Loader`, a spinning `Loader2` icon.
 
 ## Invariants
+
 - `rich-text.tsx:Rich`: a `{F<n>}` token whose id is not in `findings` renders `null`; `{BAND}` renders `BANDS[band][lang]` in `<strong>`.
 - `brief-view.tsx:BriefView`: the actions, note and advisory sections render only when `brief.written` is set; the error block renders only when `!writing && brief.writeError`; the warnings block renders only when `written.warnings.length > 0 && !brief.writeError`.
 - `brief-view.tsx:setOpen` returns the previous state unchanged when the open state already matches (avoids redundant re-renders).
-- `brief-parts.tsx:SourceRows` shows at most `limit` (default 40) row ids.
+- `brief-parts.tsx:SourceRows` shows at most `limit` (default 40) row ids, and prints each distinct flag of a row once.
+- `brief-parts.tsx:Section` is a labelled `region` whose title is an `h3`; headings inside a section start at `h4`. `brief-view.tsx` holds the `h2`.
+- `brief-parts.tsx:ActionsView` and `noteText` pass an action's `title`, `who` and `detail` through `Rich`/`resolveText`, so a placeholder is never shown raw.
+- `brief-parts.tsx:StationsTable` puts the "Likely hotspot" and "Too few valid readings to rank" notes under the station name, in the first column.
 
 ## Side Effects
+
 - `brief-parts.tsx:CopyButton` calls `navigator.clipboard.writeText(text)`, sets "Copied" for 1500 ms via `setTimeout`, and swallows clipboard errors.
 - `brief-view.tsx:cite` calls `requestAnimationFrame` and `document.getElementById(...).scrollIntoView`.
 - `mode-toggle.tsx` and `theme-provider.tsx` change the theme through `next-themes` (which persists it per the `storageKey` set in `../routes/__root.tsx`).
 
 ## Verification
-- Run: `pnpm --filter web check-types` (runs `vite build && tsc --noEmit`, so it writes `dist/`; no test runner is configured in `apps/web/package.json`).
+
+- Run: `pnpm --filter web check-types` (runs `vite build && tsc --noEmit`, so it writes `dist/`).
+- Run: `pnpm test:e2e` from the repository root (Playwright tests in `../../../../e2e` cover these components in a browser).

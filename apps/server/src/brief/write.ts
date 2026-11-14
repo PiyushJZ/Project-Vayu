@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-import { ENV } from "../env.server";
 import { AUDIENCE_LABEL, AUDIENCE_LEVERS, BANDS, GUIDANCE, fixedAdvisory } from "./bands";
-import { chatJson } from "./llm";
+import { type LlmConfig, chatJson } from "./llm";
 import type { Action, AdvisoryText, AdvisoryVariant, Brief, NoteSection, Written } from "./types";
 
 const WRITE_TIMEOUT_MS = 90_000;
@@ -291,11 +290,11 @@ function templateActions(brief: Brief): Action[] {
   return byAudience[brief.audience].filter((x): x is Action => x !== null);
 }
 
-function fallbackWritten(brief: Brief, reason: string): Written {
+function fallbackWritten(brief: Brief, llm: LlmConfig, reason: string): Written {
   const warning = `Fixed English guidance is shown because ${reason}.`;
   return {
     status: "fallback",
-    model: ENV.OPENROUTER_MODEL,
+    model: llm.model,
     note: templateNote(brief),
     actions: templateActions(brief),
     actionsSource: "template",
@@ -313,10 +312,12 @@ function toVariant(v: AdvisoryText): AdvisoryVariant {
 
 export async function writeBrief(
   brief: Brief,
+  llm: LlmConfig,
 ): Promise<{ written: Written; error: string | null }> {
   let reply: Reply;
   try {
     reply = await chatJson({
+      llm,
       purpose: "write",
       system: SYSTEM,
       user: buildUser(brief),
@@ -326,7 +327,7 @@ export async function writeBrief(
     });
   } catch (e) {
     const msg = `the model could not write the brief (${(e as Error).message})`;
-    return { written: fallbackWritten(brief, msg), error: msg };
+    return { written: fallbackWritten(brief, llm, msg), error: msg };
   }
 
   const ctx: Ctx = {
@@ -417,7 +418,7 @@ export async function writeBrief(
 
   const written: Written = {
     status: warnings.length === 0 ? "model" : "fallback",
-    model: ENV.OPENROUTER_MODEL,
+    model: llm.model,
     note,
     actions: useTemplateActions ? templateActions(brief) : actions.slice(0, 6),
     actionsSource: useTemplateActions ? "template" : "model",

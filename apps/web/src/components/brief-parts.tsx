@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@project-vayu/ui/components/card";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { BANDS } from "../../../server/src/brief/bands";
 import type {
@@ -59,11 +59,14 @@ export function Section({
   id?: string;
   action?: ReactNode;
 }) {
+  const titleId = useId();
   return (
-    <Card id={id} className="scroll-mt-4">
+    <Card id={id} role="region" aria-labelledby={titleId} className="scroll-mt-4">
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-base">{title}</CardTitle>
+          <CardTitle className="text-base">
+            <h3 id={titleId}>{title}</h3>
+          </CardTitle>
           {action}
         </div>
         {description && <CardDescription className="text-sm">{description}</CardDescription>}
@@ -129,7 +132,9 @@ function SourceRows({
         </thead>
         <tbody>
           {shown.map((id) => {
-            const flags = brief.rowFlags[id] ?? [];
+            const flags = (brief.rowFlags[id] ?? []).filter(
+              (f, i, all) => all.findIndex((x) => x.kind === f.kind && x.reason === f.reason) === i,
+            );
             return (
               <tr
                 key={id}
@@ -217,7 +222,6 @@ export function StationsTable({ brief }: { brief: Brief }) {
               "Gap rows",
               "Excluded rows",
               "Trend",
-              "",
             ].map((h) => (
               <th key={h} className="px-2 py-1 font-medium">
                 {h}
@@ -228,7 +232,18 @@ export function StationsTable({ brief }: { brief: Brief }) {
         <tbody>
           {brief.stations.map((s) => (
             <tr key={s.key} className="border-b">
-              <td className="px-2 py-1.5 font-medium">{s.name}</td>
+              <td className="px-2 py-1.5 font-medium">
+                {s.name}
+                {/* Kept in the first column so it stays on screen when a phone scrolls the table sideways. */}
+                {hotspot?.key === s.key && (
+                  <div className="text-xs text-destructive">Likely hotspot</div>
+                )}
+                {!s.qualifies && (
+                  <div className="text-xs font-normal text-muted-foreground">
+                    Too few valid readings to rank
+                  </div>
+                )}
+              </td>
               <td className="px-2 py-1.5">{num(s.mean)}</td>
               <td className="px-2 py-1.5">
                 {s.validPm25} / {s.rows}
@@ -240,14 +255,6 @@ export function StationsTable({ brief }: { brief: Brief }) {
               <td className="px-2 py-1.5">{s.suspect}</td>
               <td className="px-2 py-1.5">
                 {s.trend === "insufficient" ? "not enough data" : s.trend}
-              </td>
-              <td className="px-2 py-1.5">
-                {hotspot?.key === s.key && (
-                  <span className="font-medium text-destructive">Likely hotspot</span>
-                )}
-                {!s.qualifies && (
-                  <span className="text-muted-foreground">Too few valid readings to rank</span>
-                )}
               </td>
             </tr>
           ))}
@@ -347,6 +354,9 @@ export function ActionsView({
   written: Written;
   cite: (id: string) => void;
 }) {
+  const rich = (t: string) => (
+    <Rich text={t} findings={brief.findings} band={brief.band} onCite={cite} />
+  );
   return (
     <div className="grid gap-3">
       {written.actionsSource === "template" && (
@@ -360,13 +370,12 @@ export function ActionsView({
           <li key={i} className="grid grid-cols-[1.5rem_1fr] gap-2">
             <span className="font-mono text-muted-foreground">{i + 1}.</span>
             <div>
-              <div className="font-medium">{a.title}</div>
+              {/* The model may use placeholders in any of these fields, so none is printed raw. */}
+              <div className="font-medium">{rich(a.title)}</div>
               <div className="text-xs text-muted-foreground">
-                {a.who}, {a.timeframe}
+                {rich(a.who)}, {a.timeframe}
               </div>
-              <p className="mt-1">
-                <Rich text={a.detail} findings={brief.findings} band={brief.band} onCite={cite} />
-              </p>
+              <p className="mt-1">{rich(a.detail)}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Based on:{" "}
                 {a.findingIds.map((id) => (
@@ -400,7 +409,7 @@ export function noteText(brief: Brief, written: Written): string {
   return [
     r(written.note.headline.text),
     ...NOTE_SECTIONS.map(([k, label]) => `${label}\n${r(written.note[k].text)}`),
-    `Priority actions\n${written.actions.map((a, i) => `${i + 1}. ${a.title} (${a.who}, ${a.timeframe}). ${r(a.detail)}`).join("\n")}`,
+    `Priority actions\n${written.actions.map((a, i) => `${i + 1}. ${r(a.title)} (${r(a.who)}, ${a.timeframe}). ${r(a.detail)}`).join("\n")}`,
   ].join("\n\n");
 }
 
@@ -418,16 +427,16 @@ export function NoteView({
   );
   return (
     <div className="grid gap-3">
-      <h3 className="text-base font-medium">
+      <h4 className="text-base font-medium">
         {rich(written.note.headline.text)}
         {written.note.headline.source === "template" && <Tag>code-written</Tag>}
-      </h3>
+      </h4>
       {NOTE_SECTIONS.map(([k, label]) => (
         <div key={k}>
-          <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {label}
             {written.note[k].source === "template" && <Tag>code-written</Tag>}
-          </h4>
+          </h5>
           <p className="mt-0.5">{rich(written.note[k].text)}</p>
         </div>
       ))}
@@ -510,7 +519,7 @@ export function AdvisoryView({
       )}
 
       <article lang={shownLang} className="grid gap-2 border p-3">
-        <h3 className="text-base font-medium">
+        <h4 className="text-base font-medium">
           <Rich
             text={v.headline}
             findings={brief.findings}
@@ -518,10 +527,10 @@ export function AdvisoryView({
             lang={shownLang}
             onCite={cite}
           />
-        </h3>
+        </h4>
         {GROUPS.map(([k, label]) => (
           <div key={k}>
-            <h4 className="text-xs font-medium text-muted-foreground">{label[shownLang]}</h4>
+            <h5 className="text-xs font-medium text-muted-foreground">{label[shownLang]}</h5>
             <p className="mt-0.5 text-base">
               <Rich
                 text={v[k]}
@@ -535,7 +544,7 @@ export function AdvisoryView({
         ))}
       </article>
       <p className="text-xs text-muted-foreground">
-        Band: {BANDS[brief.band].en} ({BANDS[brief.band].range}). {brief.bandBasis}. This advisory
+        Band: {BANDS[brief.band].en} ({BANDS[brief.band].range}). {brief.bandBasis} This advisory
         comes only from the readings supplied. It does not replace official CPCB or SAFAR bulletins
         or medical advice.
       </p>

@@ -8,22 +8,23 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm -r dev",
-    "build": "pnpm -r --if-present build",
-    "check-types": "pnpm -r check-types",
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
-    "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
-    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
+    "build": "pnpm --filter web build && pnpm --filter server build",
+    "deploy": "pnpm --filter web build && pnpm --filter server run deploy",
+    "check-types": "pnpm -r check-types && tsc --noEmit -p e2e",
+    "test": "pnpm --filter server test",
+    "test:e2e": "pnpm --filter web build && playwright test",
     "check": "oxlint && oxfmt --write"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@project-vayu/config": "workspace:*",
     "@types/node": "^26.4.1",
     "lefthook": "^2.2.1",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.87.0",
-    "typescript": "catalog:",
-    "varlock": "catalog:"
+    "typescript": "catalog:"
   },
   "packageManager": "pnpm@12.18.0"
 }
