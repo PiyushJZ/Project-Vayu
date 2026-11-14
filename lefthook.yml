@@ -5,8 +5,19 @@ pre-commit:
   parallel: true
   jobs:
     - name: oxlint
-      run: pnpm oxlint --fix {staged_files}
+      run: pnpm oxlint --no-error-on-unmatched-pattern --fix {staged_files}
       stage_fixed: true
     - name: oxfmt
-      run: pnpm oxfmt --write {staged_files}
+      run: pnpm oxfmt --no-error-on-unmatched-pattern --write {staged_files}
       stage_fixed: true
+    - name: check-types
+      run: pnpm check-types
+    - name: audit
+      run: pnpm audit
+pre-push:
+  parallel: false
+  jobs:
+    - name: test
+      run: pnpm test
+    - name: build
+      run: pnpm build

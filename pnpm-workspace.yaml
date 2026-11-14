@@ -5,8 +5,14 @@ allowBuilds:
   esbuild: true
   lefthook: true
   workerd: true
+auditConfig:
+  ignoreGhsas:
+    - HTTPS://GITHUB.COM/ADVISORIES/GHSA-gcqx-w48m-w2h4
+    - GHSA-gcqx-w48m-w2h4
 catalog:
   zod: ^4.5.4
   typescript: ^6.0.3
   next-themes: ^0.4.6
   tailwindcss: ^4.3.3
+overrides:
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1

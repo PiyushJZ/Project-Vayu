@@ -1,8 +1,8 @@
 name: CI
 
+# Not triggered by pull requests or other branches. Deploy calls this on every push
+# (or merge) to main, so the checks run once there, before it ships (see deploy.yml).
 on:
-  pull_request:
-  # Deploy runs these same checks before it ships (see deploy.yml).
   workflow_call:
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   check:

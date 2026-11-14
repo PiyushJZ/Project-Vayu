@@ -20,6 +20,8 @@ jobs:
   deploy:
     name: Deploy to Cloudflare Workers
     needs: ci
+    # A manual run from another branch still runs the checks, but never deploys.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:

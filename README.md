@@ -95,8 +95,10 @@ The whole product is one Cloudflare Worker named `project-vayu`: it serves the b
 
 Two GitHub Actions workflows live in `.github/workflows`:
 
-- `ci.yml` runs on every pull request: lint, format check, type check, unit tests, build, browser tests.
-- `deploy.yml` runs on every push to `main` (and by hand from the Actions tab): it runs the same checks, then deploys and calls `/api/health` on the deployed app.
+- `ci.yml` holds the checks (lint, format check, type check, unit tests, build, browser tests). It has no trigger of its own: `deploy.yml` calls it, so nothing runs on pull requests or other branches.
+- `deploy.yml` runs on every push or merge to `main` (and by hand from the Actions tab, which only deploys from `main`): it runs the checks, then deploys and calls `/api/health` on the deployed app.
+
+Everything stays on Cloudflare's free plan and needs no domain: the app is served from its `*.workers.dev` address, with D1 and static assets on the free tier.
 
 One-time setup:
 
